@@ -1,0 +1,46 @@
+# Builds and tests the app from the public source, without the private Pro module.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  dco:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check that each commit is signed off
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          missing=0
+          for c in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            if ! git log -1 --format=%B "$c" | grep -q '^Signed-off-by: '; then
+              echo "::error::Commit $(git log -1 --format='%h %s' "$c") has no Signed-off-by line. See CONTRIBUTING.md."
+              missing=1
+            fi
+          done
+          exit $missing
+
+  build-and-test:
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check that Pro/ is absent
+        run: test ! -e Pro
+      - name: Build
+        run: swift build --manifest-cache none
+      - name: Test
+        run: swift test --manifest-cache none
+      - name: Package the app
+        run: VARIANT=dev ./scripts/build-app.sh

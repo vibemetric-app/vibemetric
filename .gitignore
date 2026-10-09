@@ -1,0 +1,10 @@
+.DS_Store
+.build/
+.swiftpm/
+build/
+*.xcodeproj/xcuserdata/
+DerivedData/
+sparkle-private-key
+
+# The private Pro module (vibemetric-pro), cloned here for official builds. Never committed.
+Pro/
