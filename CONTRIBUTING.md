@@ -20,7 +20,7 @@ You never need the `Pro/` folder. It holds the private module of the official ap
 ## Pull requests
 
 1. Open an issue first for a large change, so we can agree on the approach.
-2. Make your branch from `develop`, and open the pull request into `develop`.
+2. Make your branch from `main`, and open the pull request into `main`.
 3. Keep one topic in each pull request. Add or update tests for changed behavior.
 4. Make sure that `swift build` and `swift test` pass. CI runs both on each pull request.
 5. Never put real session transcripts, project names, keys or personal data in code, tests or screenshots. Use fictional data.
@@ -28,6 +28,10 @@ You never need the `Pro/` folder. It holds the private module of the official ap
 ## Plug-in points
 
 The plug-in points in `Sources/VibemetricAppKit/Extensions.swift` are a stable interface: the official app's Pro module uses them. Open an issue to discuss a change to them before you send a pull request. Describe new plug-in points by where they attach, not by a specific feature.
+
+## Releases
+
+`main` is the only branch. A merge into `main` does not reach users: the maintainer tests `main` in a dev build first, then releases it with a version tag (for example `v0.2.0`).
 
 ## Developer Certificate of Origin (DCO)
 
@@ -37,7 +41,7 @@ Each commit must have a `Signed-off-by` line. With this line, you certify the [D
 git commit -s -m "Your message"
 ```
 
-The `-s` option adds the line with the name and email from your git configuration. CI rejects a pull request that has a commit without it. To add the line to earlier commits on your branch, run `git rebase --signoff develop` and push again.
+The `-s` option adds the line with the name and email from your git configuration. CI rejects a pull request that has a commit without it. To add the line to earlier commits on your branch, run `git rebase --signoff main` and push again.
 
 ## Name and logo
 
