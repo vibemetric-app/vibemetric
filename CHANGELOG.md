@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.11 (2026-10-22)
+
+- Each engine in the Engine switch says whether it's ready: Ready, Not installed, Not signed in, or Can't start. When the selected engine can't score, Vibemetric says what's missing and gives the Terminal command to fix it, with a Copy button. If you have the Claude desktop app but not Claude Code's `claude` command, it says so plainly.
+- On a new install, Vibemetric uses whichever engine works. Once you've picked or used one, it keeps your choice.
+- Category boxes have a new layout: the name and score centered on top, the issue and the fix side by side, and a "See details" bar at the bottom that opens the full explanation.
+
 ## 0.4.10 (2026-10-22)
 
 - The top of a result shows only its date, and in place of the band label, how much the score changed since your previous one (for example "↑ 7 since Oct 21"). "Few sessions were examined" moves into "About this score".
