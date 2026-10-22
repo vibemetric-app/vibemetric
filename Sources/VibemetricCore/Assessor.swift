@@ -471,8 +471,8 @@ extension Assessor {
 
         A previous assessment from \(previousDate) is in `previous-card.json`, and `changes.md` lists the sessions and settings \
         that are new or changed since then. Use `previous-card.json` together with the supplied session records and summaries to \
-        understand how the person's ways of working have changed over time. Determine which practices remain in use at the \
-        assessment time, accounting for documented changes that replaced earlier practices.
+        understand how the person's ways of working have changed over time. Determine which practices remain in use across their main \
+        projects at the assessment time, accounting for documented changes that replaced earlier practices.
 
         For each dimension, compare those current practices with the rubric's criteria and assign the score those criteria support, \
         following the rubric's scoring rules.
