@@ -182,8 +182,8 @@ struct AssessmentTests {
         #expect(outcome.card.dimensions.count == 10)
         #expect(events.texts.contains(Assessor.rewriteNotice))
         let prompts = try String(contentsOf: fixture.directory.appendingPathComponent("prompt-log.txt"), encoding: .utf8)
-        #expect(prompts.components(separatedBy: "Your last reply did not include the requested part").count - 1 == 3,
-                "Each of the three parts is asked for once more")
+        #expect(prompts.components(separatedBy: "Your last reply did not include the requested part").count - 1 == 11,
+                "Each of the eleven parts is asked for once more")
     }
 
     @Test func aCardStillMissingAfterTheSecondRequestFails() async throws {
@@ -194,7 +194,7 @@ struct AssessmentTests {
                 .run(packDir: fixture.directory, sources: [], options: .fixture(.claude)) { _ in }
         }
         let prompts = try String(contentsOf: fixture.directory.appendingPathComponent("prompt-log.txt"), encoding: .utf8)
-        #expect(prompts.components(separatedBy: "Your last reply did not include the requested part").count - 1 == 3,
+        #expect(prompts.components(separatedBy: "Your last reply did not include the requested part").count - 1 == 11,
                 "Each part is asked for once more, never twice")
     }
 
@@ -207,8 +207,8 @@ struct AssessmentTests {
         #expect(outcome.card.knownTotal == 68)
         #expect(Assessor.incompleteDimensions(outcome.card).isEmpty)
         let prompts = try String(contentsOf: fixture.directory.appendingPathComponent("prompt-log.txt"), encoding: .utf8)
-        for part in ["part 1 of 3", "part 2 of 3", "part 3 of 3"] { #expect(prompts.contains(part)) }
-        #expect(prompts.contains("planning_specs, context_engineering"), "The first part asks for the first five dimensions")
+        for part in 1...11 { #expect(prompts.contains("part \(part) of 11")) }
+        #expect(prompts.contains("structured output: planning_specs."), "Each dimension is its own part")
         #expect(prompts.contains("never write a straight double quote or a backslash"))
         #expect(!prompts.contains("Your last reply did not include the requested part"))
     }
@@ -225,7 +225,7 @@ struct AssessmentTests {
         #expect(!prompts.contains("Your last reply did not include the requested part"))
     }
 
-    @Test func theThreePartsAreWrittenAtTheSameTime() async throws {
+    @Test func everyPartIsWrittenAtTheSameTime() async throws {
         let fixture = try CLIFixture(mode: "slow-write")
         defer { fixture.remove() }
         let outcome = try await Assessor(installation: CLIInstallation(executable: fixture.command))
@@ -233,18 +233,24 @@ struct AssessmentTests {
         #expect(outcome.card.knownTotal == 68)
         let log = try String(contentsOf: fixture.directory.appendingPathComponent("write-log.txt"), encoding: .utf8)
             .split(separator: "\n").map(String.init)
-        #expect(log == ["start", "start", "start", "end", "end", "end"], "All three parts start before any finishes")
+        #expect(log.prefix(11).allSatisfy { $0 == "start" } && log.count == 22, "All eleven parts start before any finishes")
         let prompts = try String(contentsOf: fixture.directory.appendingPathComponent("prompt-log.txt"), encoding: .utf8)
-        for part in ["part 1 of 3", "part 2 of 3", "part 3 of 3"] {
-            #expect(prompts.components(separatedBy: part).count - 1 == 1, "Each part is asked for once")
+        for part in 1...11 {
+            #expect(prompts.components(separatedBy: "part \(part) of 11.").count - 1 == 1, "Each part is asked for once")
         }
-        #expect(prompts.components(separatedBy: "never write a straight double quote").count - 1 >= 3, "Every part carries the full rules")
+        #expect(prompts.components(separatedBy: "never write a straight double quote").count - 1 >= 11, "Every part carries the full rules")
+        let thinking = try String(contentsOf: fixture.directory.appendingPathComponent("thinking-log.txt"), encoding: .utf8)
+        #expect(thinking.components(separatedBy: "\(Assessor.writingThinkingTokens)").count - 1 == 11, "Writing parts cap their thinking")
     }
 
     @Test func theCardSchemaLeavesOutExplanations() {
         let patch = JSONSchema.dimensionsPatch(for: .claude, dimensions: Dimension.allCases, explanations: false)
         #expect(!patch.contains("observedBehavior") && !patch.contains("overallJudgment"))
         #expect(JSONSchema.dimensionsPatch(for: .claude, dimensions: Dimension.allCases).contains("observedBehavior"))
+        for field in ["\"saw\"", "\"impact\"", "\"strengths\"", "\"solutionSteps\"", "\"fixLine\""] {
+            #expect(!patch.contains(field), "Fields only older layouts show are left out")
+        }
+        for field in ["\"headline\"", "\"issueLine\"", "\"tryThis\"", "\"evidence\""] { #expect(patch.contains(field)) }
     }
 
     @Test func openingACategoryWritesItsExplanationsFromTheSavedSession() async throws {
