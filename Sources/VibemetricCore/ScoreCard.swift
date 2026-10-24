@@ -142,7 +142,8 @@ public struct ScoreCard: Codable, Sendable {
         public var fixLine: String?
 
         /// True when the card carries the short readable fields.
-        public var isReadable: Bool { saw?.isEmpty == false || strengths != nil }
+        /// Competency cards are readable without `saw`: they show their competencies instead.
+        public var isReadable: Bool { saw?.isEmpty == false || strengths != nil || assessment != nil || planning != nil }
 
         public struct Point: Codable, Sendable {
             public var heading: String

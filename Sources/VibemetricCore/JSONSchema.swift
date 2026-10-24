@@ -30,7 +30,8 @@ enum JSONSchema {
 
     /// The schema of each dimension's result, in rubric order.
     /// Without `explanations`, competencies leave out their four-part explanation, which the app asks for when the person
-    /// opens the category.
+    /// opens the category, and each dimension leaves out the fields only older card layouts show (saw, impact, strengths,
+    /// solution steps, evidence, fix line): a competency card shows its competencies instead.
     private static func dimensionSchemas(for engine: AssessmentEngine, explanations: Bool = true) -> [(Dimension, [String: Any])] {
         let explanation = object(["sourceBasis": str, "criteria": str, "observedBehavior": str, "overallJudgment": str])
         let planning = object([
@@ -43,7 +44,7 @@ enum JSONSchema {
                 "solution": ["type": ["string", "null"]],
             ].merging(explanations ? ["explanation": explanation] : [:]) { a, _ in a }), min: 4, max: 4),
         ])
-        let dimensionProperties: [String: Any] = [
+        var dimensionProperties: [String: Any] = [
             "dimension": dimensionID,
             "status": ["type": "string", "enum": ["scored"]],
             "headline": str,
@@ -57,6 +58,11 @@ enum JSONSchema {
             "evidence": array(evidence, max: 3),
             "changeReason": ["type": ["string", "null"]],
         ]
+        if !explanations {
+            for field in ["saw", "impact", "strengths", "solutionSteps", "fixLine"] { dimensionProperties[field] = nil }
+            // Required by the card model, so kept, but empty: competency cards keep their evidence in the competencies.
+            dimensionProperties["evidence"] = array(evidence, max: 0)
+        }
         var planningDimension = dimensionProperties
         planningDimension["dimension"] = ["type": "string", "enum": [Dimension.planningSpecs.rawValue]]
         planningDimension["planning"] = planning
