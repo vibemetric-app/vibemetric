@@ -111,11 +111,11 @@ public final class Assessor: Sendable {
         "nextjs.org", "react.dev", "vercel.com", "docs.railway.com", "stripe.com", "docs.stripe.com",
     ]
 
-    private let process = CLIProcess()
+    private let processes = CLIProcessGroup()
     private let installation: CLIInstallation?
 
     public init(installation: CLIInstallation? = nil) { self.installation = installation }
-    public func cancel() { process.cancel() }
+    public func cancel() { processes.cancel() }
 
     public func run(packDir: URL, sources: [TranscriptSource], options: AssessmentOptions = AssessmentOptions(),
                     previousDate: Date? = nil, onProgress: @escaping @Sendable (Progress) -> Void) async throws -> AssessmentOutcome {
@@ -170,6 +170,45 @@ public final class Assessor: Sendable {
                                  wrappedUp: reading.reachedLimit)
     }
 
+    /// Writes 「What you did」 and 「Why you got this rating」 for one dimension's competencies, which the card leaves out
+    /// to finish sooner. It continues the result's saved session, which already holds the evidence, from the result's
+    /// pack directory, keeps every level as scored, and fills the source and criteria parts from the rubric.
+    public func explain(_ dimension: Dimension, in card: ScoreCard, sessionID: String, packDir: URL,
+                        sources: [TranscriptSource], options: AssessmentOptions,
+                        onProgress: @escaping @Sendable (Progress) -> Void = { _ in }) async throws -> ScoreCard {
+        guard let result = card.dimensions.first(where: { $0.dimension == dimension }) else { return card }
+        let competencies: [(id: String, title: String, level: PlanningAssessment.Level, summary: String)]
+        if dimension == .planningSpecs {
+            competencies = (result.planning?.ordered ?? []).map { ($0.id.rawValue, $0.id.title, $0.level, $0.summary) }
+        } else {
+            competencies = (result.assessment?.competencies ?? []).map { ($0.id, $0.title, $0.level, $0.summary) }
+        }
+        guard !competencies.isEmpty else { return card }
+        let listed = competencies.map { "- \($0.id) (\($0.title)): \($0.level.rawValue). \($0.summary)" }.joined(separator: "\n")
+        let prompt = """
+            The person opened \(dimension.title) on their score card. Do not read any more files. From the evidence you
+            already inspected, write the explanation for each of its competencies below, keeping every level exactly as
+            given; do not change any level. Return them as this run's structured output.
+            \(listed)
+            \(Self.explanationRules)
+            """
+        var write = options
+        write.timeout = min(options.timeout, 5 * 60)
+        let output = try await runOnce(prompt: prompt, schema: JSONSchema.competencyExplanations(ids: competencies.map(\.id)),
+                                       packDir: packDir, sources: sources, options: write, webAccess: false,
+                                       forkSessionID: sessionID, workingDirectory: nil,
+                                       // The levels are already judged; the explanation only puts them into words, so it
+                                       // runs like reading, with thinking off (low effort for Codex).
+                                       reading: true, onProgress: onProgress)
+        struct Written: Decodable { var competencies: [Item]; struct Item: Decodable { var id, observedBehavior, overallJudgment: String } }
+        guard let written = try? JSONDecoder().decode(Written.self, from: output.data) else {
+            throw AssessmentError.noStructuredOutput(options.engine, "The explanation did not come back complete. Try again.")
+        }
+        var explained = card
+        explained.setExplanations(written.competencies.map { ($0.id, $0.observedBehavior, $0.overallJudgment) }, for: dimension)
+        return try explained.hidingUserPaths()
+    }
+
     /// The saved session and totals carried from one reading request to the next.
     struct ReadingState {
         var sessionID: String?
@@ -182,50 +221,56 @@ public final class Assessor: Sendable {
         var contextFull = false
     }
 
-    /// Writes the card in three parts in one continuing session: the first five dimensions, the other five, then the
-    /// rest of the card, which draws on both. A shorter reply is less likely to break, and a broken part costs only that
-    /// part. A part Claude Code turned down is kept when the app can read it; a part that came back missing is asked for
-    /// once more; dimensions still incomplete once the card is assembled are asked for alone.
+    /// Writes the card in three parts at the same time, each continuing the reading session on its own: the first five
+    /// dimensions, the other five, and the rest of the card. Each part is a shorter reply than the whole card, so it
+    /// breaks less often and a broken part costs only that part; writing them side by side takes about as long as the
+    /// longest part instead of all three. A part Claude Code turned down is kept when the app can read it; a part that
+    /// came back missing is asked for once more; dimensions still incomplete once the card is assembled are asked
+    /// for alone.
     private func writeCard(preamble: String, forkSessionID: String?, end: Date, packDir: URL, sources: [TranscriptSource],
                            options: AssessmentOptions,
                            onProgress: @escaping @Sendable (Progress) -> Void) async throws -> (ScoreCard, StructuredOutput) {
         let engine = options.engine
-        var session = forkSessionID
-        var last: StructuredOutput?
-        var cost: Double? = 0
-        var turns: Int? = 0
-        func request(_ prompt: String, schema: String, keeps: @escaping @Sendable (Data) -> Bool) async throws -> Data? {
-            var write = options
-            write.timeout = max(end.timeIntervalSinceNow, 1)
-            let output = try await runOnce(prompt: prompt, schema: schema, packDir: packDir, sources: sources, options: write,
-                                           webAccess: false, forkSessionID: session, workingDirectory: nil,
-                                           requiresOutput: false, keepsRejected: keeps, onProgress: onProgress)
-            cost = cost.flatMap { spent in output.costUSD.map { spent + $0 } }
-            turns = turns.flatMap { spent in output.turns.map { spent + $0 } }
-            session = output.sessionID
-            last = output
-            return keeps(output.data) ? output.data : nil
-        }
-        func part(_ prompt: String, schema: String, keeps: @escaping @Sendable (Data) -> Bool) async throws -> Data? {
-            if let data = try await request(prompt, schema: schema, keeps: keeps) { return data }
-            guard end.timeIntervalSinceNow > 60 else { return nil }
+        /// One part: its first request continues the reading session, and a retry continues that request's session.
+        struct Part: Sendable { var data: Data?; var outputs: [StructuredOutput] }
+        func part(_ prompt: String, schema: String, keeps: @escaping @Sendable (Data) -> Bool) async throws -> Part {
+            var outputs: [StructuredOutput] = []
+            func request(_ prompt: String, from session: String?) async throws -> StructuredOutput {
+                var write = options
+                write.timeout = max(end.timeIntervalSinceNow, 1)
+                let output = try await runOnce(prompt: prompt, schema: schema, packDir: packDir, sources: sources, options: write,
+                                               webAccess: false, forkSessionID: session, workingDirectory: nil,
+                                               requiresOutput: false, keepsRejected: keeps, onProgress: onProgress)
+                outputs.append(output)
+                return output
+            }
+            let first = try await request(preamble + prompt, from: forkSessionID)
+            if keeps(first.data) { return Part(data: first.data, outputs: outputs) }
+            guard end.timeIntervalSinceNow > 60 else { return Part(data: nil, outputs: outputs) }
             onProgress(.thinking(Self.rewriteNotice))
-            return try await request(Self.rewritePrompt, schema: schema, keeps: keeps)
+            let retry = try await request(Self.rewritePrompt, from: first.sessionID)
+            return Part(data: keeps(retry.data) ? retry.data : nil, outputs: outputs)
         }
 
-        var dimensions: [Any] = []
-        for (index, half) in Self.cardHalves.enumerated() {
-            let prompt = (index == 0 ? preamble : "") + Self.writeDimensionsPrompt(part: index + 1, dimensions: half)
-            let wanted = Set(half.map(\.rawValue))
-            let keeps: @Sendable (Data) -> Bool = { !Self.dimensionObjects(in: $0, wanted: wanted).isEmpty }
-            if let data = try await part(prompt, schema: JSONSchema.dimensionsPatch(for: engine, dimensions: half), keeps: keeps) {
-                dimensions += Self.dimensionObjects(in: data, wanted: wanted)
-            }
+        let halves = Self.cardHalves.map { half in (half, Set(half.map(\.rawValue))) }
+        async let firstHalf = part(Self.writeDimensionsPrompt(part: 1, dimensions: halves[0].0),
+                                   schema: JSONSchema.dimensionsPatch(for: engine, dimensions: halves[0].0, explanations: false)) {
+            [wanted = halves[0].1] in !Self.dimensionObjects(in: $0, wanted: wanted).isEmpty
         }
-        let frameData = try await part(Self.writeFramePrompt, schema: JSONSchema.cardFrame(for: engine)) {
+        async let secondHalf = part(Self.writeDimensionsPrompt(part: 2, dimensions: halves[1].0),
+                                    schema: JSONSchema.dimensionsPatch(for: engine, dimensions: halves[1].0, explanations: false)) {
+            [wanted = halves[1].1] in !Self.dimensionObjects(in: $0, wanted: wanted).isEmpty
+        }
+        async let framePart = part(Self.writeFramePrompt, schema: JSONSchema.cardFrame(for: engine)) {
             (try? JSONSerialization.jsonObject(with: $0)) is [String: Any]
         }
-        guard let frameData, var frame = (try? JSONSerialization.jsonObject(with: frameData)) as? [String: Any] else {
+        let parts = try await [firstHalf, secondHalf, framePart]
+        var outputs = parts.flatMap(\.outputs)
+        var dimensions: [Any] = []
+        for (index, (_, wanted)) in halves.enumerated() {
+            if let data = parts[index].data { dimensions += Self.dimensionObjects(in: data, wanted: wanted) }
+        }
+        guard let frameData = parts[2].data, var frame = (try? JSONSerialization.jsonObject(with: frameData)) as? [String: Any] else {
             throw AssessmentError.noStructuredOutput(engine, "The final response did not include the score card. Try again.")
         }
         frame["dimensions"] = dimensions
@@ -236,9 +281,17 @@ public final class Assessor: Sendable {
         if !missing.isEmpty, end.timeIntervalSinceNow > 60 {
             onProgress(.thinking(Self.repairNotice(missing)))
             let wanted = Set(missing.map(\.rawValue))
-            if let data = try await request(Self.repairPrompt(missing), schema: JSONSchema.dimensionsPatch(for: engine, dimensions: missing),
-                                            keeps: { !Self.dimensionObjects(in: $0, wanted: wanted).isEmpty }),
-               let found = try? JSONDecoder().decode(DimensionsPatch.self, from: data) {
+            var write = options
+            write.timeout = max(end.timeIntervalSinceNow, 1)
+            let repair = try await runOnce(prompt: preamble + Self.repairPrompt(missing),
+                                           schema: JSONSchema.dimensionsPatch(for: engine, dimensions: missing, explanations: false),
+                                           packDir: packDir, sources: sources, options: write, webAccess: false,
+                                           forkSessionID: forkSessionID, workingDirectory: nil, requiresOutput: false,
+                                           keepsRejected: { !Self.dimensionObjects(in: $0, wanted: wanted).isEmpty },
+                                           onProgress: onProgress)
+            outputs.append(repair)
+            if !Self.dimensionObjects(in: repair.data, wanted: wanted).isEmpty,
+               let found = try? JSONDecoder().decode(DimensionsPatch.self, from: repair.data) {
                 card.replaceDimensions(found.dimensions.filter { missing.contains($0.dimension) })
             }
         }
@@ -246,15 +299,17 @@ public final class Assessor: Sendable {
             try card.normalizePlanningAssessment()
             try card.normalizeBehavioralAssessments()
             try card.calculateCompetencyScores()
-            try Self.validate(card, requirePlanning: true, requireAssessments: true, requireExplanations: true)
+            // Competency explanations are written when the person opens a category (`explain`), not with the card.
+            try Self.validate(card, requirePlanning: true, requireAssessments: true)
         } catch {
             throw AssessmentError.noStructuredOutput(engine, "The response did not match the score-card format. Try again.")
         }
-        guard var raw = last else {
+        // The frame part's session holds the reading and the card's overall findings; later requests continue it.
+        guard var raw = parts[2].outputs.last ?? outputs.last else {
             throw AssessmentError.noStructuredOutput(engine, "The final response did not include the score card. Try again.")
         }
-        raw.costUSD = cost
-        raw.turns = turns
+        raw.costUSD = outputs.reduce(Double?(0)) { total, output in total.flatMap { spent in output.costUSD.map { spent + $0 } } }
+        raw.turns = outputs.reduce(Int?(0)) { total, output in total.flatMap { spent in output.turns.map { spent + $0 } } }
         return (card, raw)
     }
 
@@ -276,27 +331,24 @@ public final class Assessor: Sendable {
         data.isEmpty ? nil : try? JSONDecoder().decode(ScoreCard.self, from: data)
     }
 
-    /// Dimensions the card is missing, has twice, or returned without valid competency levels and complete explanations.
+    /// Dimensions the card is missing, has twice, or returned without valid competency levels.
     static func incompleteDimensions(_ card: ScoreCard) -> [Dimension] {
         let catalog = try? RubricGuide.load()
         return Dimension.allCases.filter { dimension in
             let found = card.dimensions.filter { $0.dimension == dimension }
             guard found.count == 1, let result = found.first, result.status == .scored else { return true }
-            let competencies: [(PlanningAssessment.Level, PlanningAssessment.Explanation?)]
+            // A competency needs a valid level. Its explanation is written later, when the person opens the category.
+            let levels: [PlanningAssessment.Level]
             if dimension == .planningSpecs {
                 guard let planning = result.planning, result.assessment == nil, (try? planning.validate()) != nil else { return true }
-                competencies = planning.competencies.map { ($0.level, $0.explanation) }
+                levels = planning.competencies.map(\.level)
             } else {
                 guard let assessment = result.assessment, result.planning == nil,
                       let ids = catalog?.guide(for: dimension)?.competencies.map(\.id),
                       (try? assessment.validate(expectedIDs: ids)) != nil else { return true }
-                competencies = assessment.competencies.map { ($0.level, $0.explanation) }
+                levels = assessment.competencies.map(\.level)
             }
-            return !competencies.allSatisfy { level, explanation in
-                guard PlanningAssessment.Level.assessmentCases.contains(level), let explanation else { return false }
-                return [explanation.sourceBasis, explanation.criteria, explanation.observedBehavior, explanation.overallJudgment]
-                    .allSatisfy { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
-            }
+            return !levels.allSatisfy { PlanningAssessment.Level.assessmentCases.contains($0) }
         }
     }
 
@@ -421,6 +473,9 @@ public final class Assessor: Sendable {
                          contextBase: Int = 0, contextLimit: Int? = nil, keepsRejected: (@Sendable (Data) -> Bool)? = nil,
                          onProgress: @escaping @Sendable (Progress) -> Void) async throws -> StructuredOutput {
         try Task.checkCancellation()
+        // Each invocation has its own process, so card parts can be written at the same time.
+        let process = processes.start()
+        defer { processes.finished(process) }
         let engine = options.engine
         let installed: CLIInstallation
         if let installation { installed = installation }
@@ -430,9 +485,11 @@ public final class Assessor: Sendable {
             throw AssessmentError.failed(engine, "The saved session ID is invalid.")
         }
         let started = Date()
-        let promptFile = packDir.appendingPathComponent("assessment-prompt.txt")
-        let schemaFile = packDir.appendingPathComponent("assessment-schema.json")
-        let resultFile = packDir.appendingPathComponent("assessment-result.json")
+        // Each run has its own files, so runs in the same pack at the same time never read each other's.
+        let run = UUID().uuidString.prefix(8)
+        let promptFile = packDir.appendingPathComponent("assessment-prompt-\(run).txt")
+        let schemaFile = packDir.appendingPathComponent("assessment-schema-\(run).json")
+        let resultFile = packDir.appendingPathComponent("assessment-result-\(run).json")
         defer {
             for file in [promptFile, schemaFile, resultFile] { try? FileManager.default.removeItem(at: file) }
         }
@@ -445,7 +502,6 @@ public final class Assessor: Sendable {
                                        readableDirectories: workingDirectory == nil ? [] : [packDir], lowEffort: reading)
         var environment = installed.environment
         if reading && engine == .claude { environment["MAX_THINKING_TOKENS"] = "0" }
-        let process = self.process
         let kept = KeptCard()
         // Claude Code reports the context with every reply; Codex is estimated from where the session stood.
         let reader = AssessmentStream(engine: engine, contextBase: contextBase + Self.estimatedPromptTokens(prompt),
@@ -646,29 +702,31 @@ public final class Assessor: Sendable {
         """
 
     /// The first two writing parts: one half of the dimensions each. The first carries the card's rules.
-    static func writeDimensionsPrompt(part: Int, dimensions: [Dimension]) -> String {
-        let names = dimensions.map(\.rawValue).joined(separator: ", ")
-        guard part == 1 else {
-            return """
-                Phase 3 of 3: write, part \(part) of 3. Under the same rules, return these dimensions now, complete, as this
-                run's structured output: \(names).
-                """
-        }
-        return """
-            Phase 3 of 3: write, part 1 of 3. Reading is complete; do not read any more files. The score card is written in
-            three parts in this conversation: two halves of the dimensions, then the rest of the card. Return these
-            dimensions now, complete, as this run's structured output, from the evidence inspected in phases 1 and 2:
-            \(names). Every task whose request, action, and result you read in a digest in phase 1 is a judged task and
-            counts toward that competency's High/Medium/Low totals, the same as a task read in an original transcript in
-            phase 2; do not reduce the counts to the originals you opened. \(cardRules)
-            """
+    /// The start of every writing part. The three parts run side by side, each continuing the reading session on its
+    /// own, so each carries the full rules.
+    private static func writeIntro(part: Int, task: String) -> String {
+        """
+        Phase 3 of 3: write, part \(part) of 3. Reading is complete; do not read any more files. The score card is
+        written in three parts at the same time, each in its own continuation of this conversation: the first five
+        dimensions, the other five, and the rest of the card. This part: \(task) Base it on the evidence inspected in
+        phases 1 and 2. Every task whose request, action, and result you read in a digest in phase 1 is a judged task
+        and counts toward that competency's High/Medium/Low totals, the same as a task read in an original transcript
+        in phase 2; do not reduce the counts to the originals you opened. \(cardRules)
+        """
     }
 
-    /// The last writing part: everything except the dimensions, drawing on the ten written above.
-    static let writeFramePrompt = """
-        Phase 3 of 3: write, part 3 of 3. Under the same rules, return the rest of the score card now as this run's
-        structured output: everything except the dimensions, consistent with the ten dimensions you wrote above.
-        """
+    static func writeDimensionsPrompt(part: Int, dimensions: [Dimension]) -> String {
+        writeIntro(part: part, task: "return these dimensions now, complete, as this run's structured output: "
+            + dimensions.map(\.rawValue).joined(separator: ", ") + ".")
+    }
+
+    /// The last writing part: everything except the dimensions, written alongside them from the same evidence.
+    static let writeFramePrompt = writeIntro(part: 3, task: """
+        return the rest of the score card now as this run's structured output: everything except the dimensions. The
+        dimensions are written at the same time from the same evidence, so base the summary, highlights, improvement,
+        and the other fields directly on that evidence and the competency levels it supports. Do not state numeric
+        scores; the app calculates them.
+        """)
 
     /// Sent once in the writing session when a part came back missing.
     static let rewritePrompt = """
@@ -682,10 +740,10 @@ public final class Assessor: Sendable {
     /// Sent once in the writing session for the dimensions a card returned incomplete; the rest of the card is kept.
     static func repairPrompt(_ dimensions: [Dimension]) -> String {
         """
-        Your score card is complete except for these dimensions: \(dimensions.map(\.rawValue).joined(separator: ", ")).
-        Each is missing, duplicated, or lacks valid competency levels or a complete four-part explanation. Do not read any
-        more files. Return only these dimensions, complete, as this run's structured output, from the evidence you
-        already inspected. Every other dimension stays as you wrote it.
+        Phase 3 of 3: write. Reading is complete; do not read any more files. The score card came back
+        complete except for these dimensions: \(dimensions.map(\.rawValue).joined(separator: ", ")). Each is missing,
+        duplicated, or lacks valid competency levels. Return only these dimensions, complete, as this run's structured output, from
+        the evidence inspected in phases 1 and 2. \(cardRules)
         """
     }
 
@@ -693,13 +751,28 @@ public final class Assessor: Sendable {
         "Asking again only for incomplete dimensions: \(dimensions.map(\.rawValue).joined(separator: ", "))."
     }
 
+    /// How to write a competency's 「What you did」 and 「Why you got this rating」, asked for when the person opens a
+    /// category (`explain`).
+    private static let explanationRules = """
+        observedBehavior: representative actual tasks, relevant actions or missing conditions, and why each receives its
+        level. Explain the concrete request, action, and completion check or missing condition; say who did what.
+        overallJudgment: give all three High, Medium, and Low counts and percentages, including zeros, with a
+        representative actual directory/task and defining behavior for every nonzero group. State in everyday language
+        which level recurred most and, for High, whether it reached two thirds. With no rated tasks, explain the evidence
+        limit without percentages or invented cases. Keep internal variable notation out of displayed prose.
+        Show only project names and relevant project-relative paths. Never print personal home-directory prefixes.
+        Inside text values, never write a straight double quote or a backslash: quote words with 「」 or ‘’, and write
+        file paths, commands, and search patterns plainly, without quote marks or backslash escapes.
+        """
+
     private static let cardRules = """
         Judge every competency as high, medium, low, or unknown.
         Preserve any level already established; missing higher-level proof does not erase confirmed partial practice.
         Low means low-level practice where the competency applies: absent, minimal, ineffective, or wrong.
         Apply the rubric's shared Unknown handling rule to the inspected material. Explain any investigation cut short
         by the deadline without discarding the evidence already available.
-        Return every competency's exact ID, two-sentence personal summary, four-part explanation and supported solution.
+        Return every competency's exact ID, two-sentence personal summary and supported solution. Leave out its
+        explanation: the app asks for it when the person opens the category.
         For every Unknown, return a scope.unknownInvestigations entry naming its dimension and competencyID, actual
         searches, remainingLeads, and status. Use not_found only after targeted accessible leads were exhausted. Use
         incomplete for unread identified leads or research cut short, and unavailable for an access obstacle.
@@ -712,12 +785,8 @@ public final class Assessor: Sendable {
         practice was partial or missing, not only the first task that shows it.
         Apply the rubric's task aggregation: K=H+M+L excludes Unknown tasks. K=0 means Unknown; otherwise use the
         most frequent level. Ties return Medium, and High also requires H/K >= 2/3. Use exact fractions.
-        In each overallJudgment, give all three counts and percentages, including zeros, with a representative
-        actual directory/task and defining behavior for every nonzero group. State in everyday language which
-        level recurred most and, for High, whether it reached two thirds. With no rated tasks, explain the evidence limit
-        without percentages or invented cases. Keep internal variable notation out of displayed prose.
+        Keep internal variable notation out of displayed prose.
         Summaries name the actual directory, task, explicit person or AI actor, and supported result.
-        Keep every explanation in its existing field; do not add a task array or helper properties.
         Inside text values, never write a straight double quote or a backslash: quote words with 「」 or ‘’, and write
         file paths, commands, and search patterns plainly, without quote marks or backslash escapes.
         Match section 3's specificity and source links. Report actual sessions examined and reading shortfalls honestly.

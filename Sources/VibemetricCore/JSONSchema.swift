@@ -29,18 +29,19 @@ enum JSONSchema {
     }
 
     /// The schema of each dimension's result, in rubric order.
-    private static func dimensionSchemas(for engine: AssessmentEngine) -> [(Dimension, [String: Any])] {
+    /// Without `explanations`, competencies leave out their four-part explanation, which the app asks for when the person
+    /// opens the category.
+    private static func dimensionSchemas(for engine: AssessmentEngine, explanations: Bool = true) -> [(Dimension, [String: Any])] {
         let explanation = object(["sourceBasis": str, "criteria": str, "observedBehavior": str, "overallJudgment": str])
         let planning = object([
             "competencies": array(object([
                 "id": ["type": "string", "enum": PlanningAssessment.CompetencyID.allCases.map(\.rawValue)],
                 "level": ["type": "string", "enum": PlanningAssessment.Level.assessmentCases.map(\.rawValue)],
                 "summary": str,
-                "explanation": explanation,
                 "sources": array(object(["title": str, "url": str, "note": str])),
                 "criteria": object(["high": str, "medium": str, "low": str]),
                 "solution": ["type": ["string", "null"]],
-            ]), min: 4, max: 4),
+            ].merging(explanations ? ["explanation": explanation] : [:]) { a, _ in a }), min: 4, max: 4),
         ])
         let dimensionProperties: [String: Any] = [
             "dimension": dimensionID,
@@ -78,9 +79,9 @@ enum JSONSchema {
                         "id": ["type": "string", "enum": guide.competencies.map(\.id)],
                         "level": ["type": "string", "enum": PlanningAssessment.Level.assessmentCases.map(\.rawValue)],
                         "summary": str,
-                        "explanation": explanation,
                         "solution": ["type": ["string", "null"]],
-                    ]), min: guide.competencies.count, max: guide.competencies.count),
+                    ].merging(explanations ? ["explanation": explanation] : [:]) { a, _ in a }),
+                    min: guide.competencies.count, max: guide.competencies.count),
                 ])
                 let optional = engine == .claude ? Set(["planning", "changeReason"]) : []
                 return (dimension, object(properties, optional: optional))
@@ -88,9 +89,19 @@ enum JSONSchema {
     }
 
     /// Only the listed dimensions, for asking again for the parts of a card that came back incomplete.
-    static func dimensionsPatch(for engine: AssessmentEngine, dimensions: [Dimension]) -> String {
-        let wanted = dimensionSchemas(for: engine).filter { dimensions.contains($0.0) }.map(\.1)
+    static func dimensionsPatch(for engine: AssessmentEngine, dimensions: [Dimension], explanations: Bool = true) -> String {
+        let wanted = dimensionSchemas(for: engine, explanations: explanations).filter { dimensions.contains($0.0) }.map(\.1)
         return encoded(object(["dimensions": array(["anyOf": wanted], min: wanted.count, max: wanted.count)]))
+    }
+
+    /// What the person sees under 「What you did」 and 「Why you got this rating」 for the listed competencies of one
+    /// dimension, written when they open it.
+    static func competencyExplanations(ids: [String]) -> String {
+        encoded(object(["competencies": array(object([
+            "id": ["type": "string", "enum": ids],
+            "observedBehavior": str,
+            "overallJudgment": str,
+        ]), min: ids.count, max: ids.count)]))
     }
 
     static func scoreCard(for engine: AssessmentEngine) -> String {

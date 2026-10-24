@@ -67,6 +67,7 @@ private struct PlanningCompetencyView: View {
     var competency: PlanningAssessment.Competency
     var expandAll: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.explanationStatus) private var explanationStatus
     @State private var expanded: Bool
 
     init(competency: PlanningAssessment.Competency, expandAll: Bool) {
@@ -131,6 +132,8 @@ private struct PlanningCompetencyView: View {
             detailSection("What you did") {
                 if let explanation = competency.explanation {
                     detailText(explanation.observedBehavior)
+                } else if let explanationStatus {
+                    PendingExplanation(status: explanationStatus)
                 } else {
                     detailText("This older result does not include a written observation.")
                 }
@@ -138,6 +141,8 @@ private struct PlanningCompetencyView: View {
             detailSection("Why you got this rating") {
                 if let explanation = competency.explanation {
                     detailText(explanation.overallJudgment)
+                } else if let explanationStatus {
+                    PendingExplanation(status: explanationStatus)
                 } else {
                     detailText("The stored rating is \(levelLabel). This older result does not include a written judgment.")
                 }

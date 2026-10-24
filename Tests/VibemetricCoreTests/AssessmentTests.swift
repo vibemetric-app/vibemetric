@@ -73,9 +73,8 @@ struct AssessmentTests {
             #expect(!args.contains("web_search=\"live\""))
             #expect(args.contains("--sandbox\nread-only"))
         }
-        for name in ["assessment-prompt.txt", "assessment-schema.json", "assessment-result.json"] {
-            #expect(!FileManager.default.fileExists(atPath: fixture.directory.appendingPathComponent(name).path))
-        }
+        let leftovers = try FileManager.default.contentsOfDirectory(atPath: fixture.directory.path).filter { $0.hasPrefix("assessment-") }
+        #expect(leftovers.isEmpty, "A run removes its prompt, schema and result files")
     }
 
     @Test func codexArgumentsKeepTheJudgeReadOnlyAndPersistent() {
@@ -226,6 +225,57 @@ struct AssessmentTests {
         #expect(!prompts.contains("Your last reply did not include the requested part"))
     }
 
+    @Test func theThreePartsAreWrittenAtTheSameTime() async throws {
+        let fixture = try CLIFixture(mode: "slow-write")
+        defer { fixture.remove() }
+        let outcome = try await Assessor(installation: CLIInstallation(executable: fixture.command))
+            .run(packDir: fixture.directory, sources: [], options: .fixture(.claude)) { _ in }
+        #expect(outcome.card.knownTotal == 68)
+        let log = try String(contentsOf: fixture.directory.appendingPathComponent("write-log.txt"), encoding: .utf8)
+            .split(separator: "\n").map(String.init)
+        #expect(log == ["start", "start", "start", "end", "end", "end"], "All three parts start before any finishes")
+        let prompts = try String(contentsOf: fixture.directory.appendingPathComponent("prompt-log.txt"), encoding: .utf8)
+        for part in ["part 1 of 3", "part 2 of 3", "part 3 of 3"] {
+            #expect(prompts.components(separatedBy: part).count - 1 == 1, "Each part is asked for once")
+        }
+        #expect(prompts.components(separatedBy: "never write a straight double quote").count - 1 >= 3, "Every part carries the full rules")
+    }
+
+    @Test func theCardSchemaLeavesOutExplanations() {
+        let patch = JSONSchema.dimensionsPatch(for: .claude, dimensions: Dimension.allCases, explanations: false)
+        #expect(!patch.contains("observedBehavior") && !patch.contains("overallJudgment"))
+        #expect(JSONSchema.dimensionsPatch(for: .claude, dimensions: Dimension.allCases).contains("observedBehavior"))
+    }
+
+    @Test func openingACategoryWritesItsExplanationsFromTheSavedSession() async throws {
+        let fixture = try CLIFixture()
+        defer { fixture.remove() }
+        var card = try JSONDecoder().decode(ScoreCard.self, from: Data(contentsOf: fixture.directory.appendingPathComponent("fixture-card.json")))
+        let index = card.dimensions.firstIndex { $0.dimension == .security }!
+        var assessment = card.dimensions[index].assessment!
+        for i in assessment.competencies.indices { assessment.competencies[i].explanation = nil }
+        card.dimensions[index].assessment = assessment
+        let levels = assessment.competencies.map(\.level)
+        #expect(card.needsExplanations(.security))
+        let written = ["competencies": assessment.competencies.map {
+            ["id": $0.id, "observedBehavior": "In app, the AI ran the tests after each change.", "overallJudgment": "Two of three tasks were High."]
+        }]
+        try JSONSerialization.data(withJSONObject: written).write(to: fixture.directory.appendingPathComponent("fixture-explanations.json"))
+
+        let explained = try await Assessor(installation: CLIInstallation(executable: fixture.command))
+            .explain(.security, in: card, sessionID: CLIFixture.sessionID, packDir: fixture.directory, sources: [],
+                     options: .fixture(.claude))
+        let result = explained.dimensions.first { $0.dimension == .security }!.assessment!
+        #expect(!explained.needsExplanations(.security))
+        #expect(result.competencies.map(\.level) == levels, "Levels stay as scored")
+        #expect(result.competencies.allSatisfy { $0.explanation?.overallJudgment == "Two of three tasks were High." })
+        #expect(result.competencies.allSatisfy { !($0.explanation?.criteria ?? "").isEmpty }, "Criteria come from the rubric")
+        let args = try String(contentsOf: fixture.directory.appendingPathComponent("received-arguments.txt"), encoding: .utf8)
+        #expect(args.contains("--resume\n\(CLIFixture.sessionID)\n--fork-session"))
+        let thinking = try String(contentsOf: fixture.directory.appendingPathComponent("thinking-log.txt"), encoding: .utf8)
+        #expect(thinking.contains("0"), "Explanations run with thinking off")
+    }
+
     @Test(arguments: AssessmentEngine.allCases)
     func anIncompleteDimensionIsAskedForAloneAndMerged(_ engine: AssessmentEngine) async throws {
         let fixture = try CLIFixture(mode: "incomplete-dimension")
@@ -237,9 +287,8 @@ struct AssessmentTests {
         var broken = security
         var assessment = broken["assessment"] as! [String: Any]
         var competencies = assessment["competencies"] as! [[String: Any]]
-        var explanation = competencies[0]["explanation"] as! [String: Any]
-        explanation["overallJudgment"] = " "
-        competencies[0]["explanation"] = explanation
+        // A level outside high/medium/low/unknown makes the dimension incomplete; explanations are written later.
+        competencies[0]["level"] = "not_applicable"
         assessment["competencies"] = competencies
         broken["assessment"] = assessment
         dimensions[index] = broken
@@ -251,7 +300,7 @@ struct AssessmentTests {
         if engine == .codex {
             let script = try String(contentsOf: fixture.command, encoding: .utf8).replacingOccurrences(
                 of: #"if [ "incomplete-dimension" != "missing" ]; then cat fixture-card.json > "$output"; fi"#,
-                with: #"if grep -q "Phase 3 of 3" received-prompt.txt; then cat fixture-card-incomplete.json > "$output"; elif grep -q "Return only these dimensions" received-prompt.txt; then cat fixture-patch.json > "$output"; else cat fixture-card.json > "$output"; fi"#)
+                with: #"if grep -q "Return only these dimensions" "$prompt"; then cat fixture-patch.json > "$output"; elif grep -q "Phase 3 of 3" "$prompt"; then cat fixture-card-incomplete.json > "$output"; else cat fixture-card.json > "$output"; fi"#)
             try script.write(to: fixture.command, atomically: true, encoding: .utf8)
         }
         let outcome = try await Assessor(installation: CLIInstallation(executable: fixture.command))
@@ -357,7 +406,7 @@ struct AssessmentTests {
         await #expect(throws: CancellationError.self) {
             try await assessor.run(packDir: fixture.directory, sources: [], options: .fixture(.codex)) { _ in }
         }
-        #expect(!FileManager.default.fileExists(atPath: fixture.directory.appendingPathComponent("received-prompt.txt").path))
+        #expect(!FileManager.default.fileExists(atPath: fixture.directory.appendingPathComponent("prompt-log.txt").path))
     }
 
     @Test(arguments: [true, false])
@@ -503,15 +552,21 @@ struct CLIFixture {
           if [ "$arg" = "fork" ] || [ "$arg" = "--fork-session" ]; then is_fork=1; fi
         done
         # Every continuation gets a new session: the first is forkID, later ones count up.
+        # Card parts run at the same time, so the counter is updated under a lock.
         if [ "$is_fork" = 1 ]; then
+          while ! mkdir fork-lock 2>/dev/null; do sleep 0.01; done
           forks=$(cat fork-count 2>/dev/null || echo 0)
           echo $((forks + 1)) > fork-count
+          rmdir fork-lock
           if [ "$forks" = 0 ]; then session_id="\#(Self.forkID)"; else session_id=$(printf '33333333-3333-4333-8333-%012d' "$forks"); fi
         fi
         if [ "\#(mode)" = "same-session" ]; then session_id="\#(Self.sessionID)"; fi
         if [ "\#(mode)" = "no-session" ]; then session_id=""; fi
-        cat > received-prompt.txt
-        cat received-prompt.txt >> prompt-log.txt
+        # Each request reads its own prompt copy, since card parts run at the same time.
+        prompt=$(mktemp received-prompt.XXXXXX)
+        trap 'rm -f "$prompt"' EXIT
+        cat > "$prompt"
+        cat "$prompt" >> prompt-log.txt
         case "$*" in *model_reasoning_effort*) echo low ;; *) echo default ;; esac >> effort-log.txt
         if [ "\#(mode)" = "sleep" ]; then sleep 30; exit 1; fi
         # A first run that is still reading at its time limit, after saving its session (or not).
@@ -531,7 +586,7 @@ struct CLIFixture {
             sleep 30; exit 1
           fi
           # A card Claude Code turns down, after which the model would start writing it again.
-          if [ "\#(mode)" = "rejected-card" ] && grep -q "Phase 3 of 3" received-prompt.txt; then
+          if [ "\#(mode)" = "rejected-card" ] && grep -q "Phase 3 of 3" "$prompt"; then
             printf '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"card1","name":"StructuredOutput","input":'
             tr -d '\n' < fixture-card.json
             printf '}]}}\n'
@@ -539,13 +594,18 @@ struct CLIFixture {
             sleep 30; exit 1
           fi
           card=fixture-card.json
+          # Each writing part takes two seconds, to show the parts run side by side.
+          if [ "\#(mode)" = "slow-write" ] && grep -q "Phase 3 of 3" "$prompt"; then
+            echo start >> write-log.txt; sleep 2; echo end >> write-log.txt
+          fi
+          if grep -q "The person opened" "$prompt" && [ -f fixture-explanations.json ]; then card=fixture-explanations.json; fi
           if [ "\#(mode)" = "incomplete-dimension" ]; then
-            if grep -q "Phase 3 of 3" received-prompt.txt; then card=fixture-card-incomplete.json; fi
-            if grep -q "Return only these dimensions" received-prompt.txt; then card=fixture-patch.json; fi
+            if grep -q "Phase 3 of 3" "$prompt"; then card=fixture-card-incomplete.json; fi
+            if grep -q "Return only these dimensions" "$prompt"; then card=fixture-patch.json; fi
           fi
           # Replies that end in plain text instead of the structured output: every reading reply, or the first card.
-          if { [ "\#(mode)" = "checkpoint-text" ] && ! grep -q "Phase 3 of 3" received-prompt.txt; } ||
-             { [ "\#(mode)" = "missing-once" ] && grep -q "Phase 3 of 3" received-prompt.txt; } ||
+          if { [ "\#(mode)" = "checkpoint-text" ] && ! grep -q "Phase 3 of 3" "$prompt"; } ||
+             { [ "\#(mode)" = "missing-once" ] && grep -q "Phase 3 of 3" "$prompt"; } ||
              [ "\#(mode)" = "never-card" ]; then
             printf '{"type":"result","is_error":false,"total_cost_usd":0.02,"result":"Notes in plain text."}\n'
             exit 0

@@ -71,6 +71,7 @@ private struct BehavioralCompetencyView: View {
     var competency: BehavioralAssessment.Competency
     var expandAll: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.explanationStatus) private var explanationStatus
     @State private var expanded: Bool
 
     init(competency: BehavioralAssessment.Competency, expandAll: Bool) {
@@ -128,11 +129,24 @@ private struct BehavioralCompetencyView: View {
             explanationPart("Why we look for this", text: competency.explanation?.sourceBasis
                             ?? competency.sources.first.map { "[\($0.title)](\($0.url)) \($0.note)" } ?? "")
             explanationPart("How we rate this", text: competency.explanation?.criteria ?? fallbackCriteria)
-            explanationPart("What you did", text: competency.explanation?.observedBehavior ?? fallbackObservations)
-            explanationPart("Why you got this rating", text: competency.explanation?.overallJudgment ?? fallbackJudgment)
+            if competency.explanation == nil, let explanationStatus {
+                // Written on opening the category, so the score itself finishes sooner.
+                pendingPart("What you did", status: explanationStatus)
+                pendingPart("Why you got this rating", status: explanationStatus)
+            } else {
+                explanationPart("What you did", text: competency.explanation?.observedBehavior ?? fallbackObservations)
+                explanationPart("Why you got this rating", text: competency.explanation?.overallJudgment ?? fallbackJudgment)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .textSelection(.enabled)
+    }
+
+    private func pendingPart(_ title: String, status: ExplanationStatus) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(title).scaledFont(14, weight: .semibold).foregroundStyle(Theme.ink)
+            PendingExplanation(status: status)
+        }
     }
 
     private func explanationPart(_ title: String, text: String) -> some View {

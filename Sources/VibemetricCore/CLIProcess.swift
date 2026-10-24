@@ -127,3 +127,31 @@ private final class LockedFlag: @unchecked Sendable {
     var value: Bool { lock.withLock { storage } }
     func set() { lock.withLock { storage = true } }
 }
+
+/// The invocations of one owner that may run at the same time, such as the parts of a score card written in
+/// parallel. Cancelling stops every running one and every one started afterwards.
+final class CLIProcessGroup: @unchecked Sendable {
+    private let lock = NSLock()
+    private var running: [ObjectIdentifier: CLIProcess] = [:]
+    private var cancelled = false
+
+    /// A new invocation that this group cancels; pass it to `finished(_:)` when it is done.
+    func start() -> CLIProcess {
+        let process = CLIProcess()
+        let cancelNow = lock.withLock { () -> Bool in
+            running[ObjectIdentifier(process)] = process
+            return cancelled
+        }
+        if cancelNow { process.cancel() }
+        return process
+    }
+
+    func finished(_ process: CLIProcess) {
+        lock.withLock { running[ObjectIdentifier(process)] = nil }
+    }
+
+    func cancel() {
+        let active = lock.withLock { cancelled = true; return Array(running.values) }
+        active.forEach { $0.cancel() }
+    }
+}

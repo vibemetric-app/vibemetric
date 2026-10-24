@@ -246,6 +246,9 @@ public final class AppModel {
         !isRunning && !isScanning && Extensions.currentBusyReason == nil && installations[engine] != nil && (summary?.total ?? 0) > 0
     }
     var history: [CardRecord] = []
+    /// Categories whose competency explanations are being written, and those that failed, as `RatingExplanations.key`.
+    var explainingRatings: Set<String> = []
+    var ratingExplanationErrors: [String: String] = [:]
     public var selected: CardRecord? {
         didSet {
             guard let selected else { return }

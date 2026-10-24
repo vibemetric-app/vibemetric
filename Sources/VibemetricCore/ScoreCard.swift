@@ -560,3 +560,42 @@ public struct ScoreCard: Codable, Sendable {
         return expected > 0 && Double(scope.sessionsExamined) < Double(expected) * 0.8
     }
 }
+
+extension ScoreCard {
+    /// Stores written observations and judgments for one dimension's competencies. The source and criteria parts come
+    /// from each competency's rubric sources and criteria, so only these two parts need writing.
+    public mutating func setExplanations(_ written: [(id: String, observedBehavior: String, overallJudgment: String)],
+                                         for dimension: Dimension) {
+        guard let index = dimensions.firstIndex(where: { $0.dimension == dimension }) else { return }
+        func explanation(sources: [PlanningAssessment.Source], criteria: PlanningAssessment.Criteria,
+                         observed: String, judgment: String) -> PlanningAssessment.Explanation {
+            let labels = [PlanningAssessment.Level.high, .medium, .low].map { $0.label(language: language) }
+            return .init(sourceBasis: sources.map(\.note).joined(separator: " "),
+                         criteria: "\(labels[0]): \(criteria.high) \(labels[1]): \(criteria.medium) \(labels[2]): \(criteria.low)",
+                         observedBehavior: observed, overallJudgment: judgment)
+        }
+        for item in written {
+            if var planning = dimensions[index].planning,
+               let i = planning.competencies.firstIndex(where: { $0.id.rawValue == item.id }) {
+                let c = planning.competencies[i]
+                planning.competencies[i].explanation = explanation(sources: c.sources, criteria: c.criteria,
+                                                                   observed: item.observedBehavior, judgment: item.overallJudgment)
+                dimensions[index].planning = planning
+            } else if var assessment = dimensions[index].assessment,
+                      let i = assessment.competencies.firstIndex(where: { $0.id == item.id }) {
+                let c = assessment.competencies[i]
+                assessment.competencies[i].explanation = explanation(sources: c.sources, criteria: c.criteria,
+                                                                     observed: item.observedBehavior, judgment: item.overallJudgment)
+                dimensions[index].assessment = assessment
+            }
+        }
+    }
+
+    /// Whether a dimension still needs its competency explanations written (cards that leave them out to finish sooner).
+    public func needsExplanations(_ dimension: Dimension) -> Bool {
+        guard let result = dimensions.first(where: { $0.dimension == dimension }) else { return false }
+        if let planning = result.planning { return planning.competencies.contains { $0.explanation == nil } }
+        if let assessment = result.assessment { return assessment.competencies.contains { $0.explanation == nil } }
+        return false
+    }
+}

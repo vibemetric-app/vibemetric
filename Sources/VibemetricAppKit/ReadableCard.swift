@@ -21,6 +21,7 @@ struct ReadableCardContent: View {
         VStack(alignment: .leading, spacing: 30) {
             ResultSummary(record: record, baseline: baseline, changes: changes, expandAll: expandAll,
                           deepDiveFooter: deepDiveFooter).id("header")
+                .environment(\.resultRecordID, record.id)
             about.id("scope")
         }
         .scrollTargetLayout()
@@ -66,13 +67,28 @@ struct CategoryDetails: View {
     var deductions: [ScoreCard.Deduction] = []
     var footer: AnyView?
     var expandAll = false
+    @Environment(AppModel.self) private var model: AppModel?
+    @Environment(\.resultRecordID) private var recordID
+
+    /// Set when this category's explanations are written now, on opening it, rather than with the card.
+    private var explanationStatus: ExplanationStatus? {
+        guard let model, let recordID, let record = model.history.first(where: { $0.id == recordID }),
+              model.canExplain(result.dimension, of: record) else { return nil }
+        let key = RatingExplanations.key(recordID, result.dimension)
+        let dimension = result.dimension
+        return ExplanationStatus(writing: model.explainingRatings.contains(key), error: model.ratingExplanationErrors[key]) {
+            Task { await model.explainRating(dimension, of: recordID) }
+        }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             if result.dimension == .planningSpecs, let planning = result.planning {
                 PlanningAssessmentView(assessment: planning, expandAll: expandAll)
+                    .environment(\.explanationStatus, explanationStatus)
             } else if let assessment = result.assessment {
                 BehavioralAssessmentView(assessment: assessment, expandAll: expandAll)
+                    .environment(\.explanationStatus, explanationStatus)
             } else if result.isReadable {
                 if let strengths = result.strengths {
                     // Newer cards: what works on its own, above a problem that holds only the gap.
@@ -103,6 +119,11 @@ struct CategoryDetails: View {
             }
             if !result.isReadable { EvidenceChips(evidence: result.evidence) }
             if let footer { footer }
+        }
+        // Opening the category starts writing its explanations, unless exporting (expandAll) or they already exist.
+        .task(id: recordID) {
+            guard !expandAll, let model, let recordID, explanationStatus?.error == nil, explanationStatus != nil else { return }
+            await model.explainRating(result.dimension, of: recordID)
         }
     }
 }
