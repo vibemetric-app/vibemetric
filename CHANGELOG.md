@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- A session kept open for several days is read as that many days of work: its evidence pack has one digest per day with activity, each with its own room, instead of one digest trimmed from the middle. The changes since the last score list only the days after it. Sessions from a single day keep one digest.
+
 ## 0.4.13 (2026-10-22)
 
 - "What you're doing well" shows its points in a rounded card that matches the category list, with a green dot for each point and more space between lines.
