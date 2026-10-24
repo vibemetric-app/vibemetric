@@ -13,9 +13,16 @@ final class CLIProcess: @unchecked Sendable {
     private let lock = NSLock()
     private var process: Process?
     private var cancelled = false
+    private var stoppedEarly = false
 
     func cancel() {
         let active = lock.withLock { cancelled = true; return process }
+        if let active { Self.stop(active) }
+    }
+
+    /// Ends the running invocation as if its time were up, so the caller can continue from what it already has.
+    func stopEarly() {
+        let active = lock.withLock { stoppedEarly = true; return process }
         if let active { Self.stop(active) }
     }
 
@@ -55,6 +62,7 @@ final class CLIProcess: @unchecked Sendable {
             precondition(process == nil, "Only one invocation per CLIProcess")
             try proc.run()
             process = proc
+            stoppedEarly = false
         }
         defer { lock.withLock { process = nil } }
         let stdout = BoundedData(), stderr = BoundedData(), expired = LockedFlag()
@@ -84,7 +92,7 @@ final class CLIProcess: @unchecked Sendable {
         deadline.cancel()
         reads.wait()
         if lock.withLock({ cancelled }) { throw CancellationError() }
-        if expired.value { throw AssessmentError.timedOut }
+        if expired.value || lock.withLock({ stoppedEarly }) { throw AssessmentError.timedOut }
         return Output(status: proc.terminationStatus, stdout: stdout.data, stderr: stderr.data)
     }
 

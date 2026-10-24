@@ -69,7 +69,7 @@ enum Snapshot {
                 let now = Date()
                 model.runStarted = now.addingTimeInterval(-185)
                 model.progress = ScoreProgress(started: now.addingTimeInterval(-185))
-                model.progress.startReading(digests: 150, at: now.addingTimeInterval(-170))
+                model.progress.startReading(digests: EvidencePack.maxDigests, at: now.addingTimeInterval(-170))
                 for i in 0..<23 { model.progress.noteRead("Read cc-\(i)a1b2c3d4.md") }
                 model.activity = ["Claude Code is reading your evidence pack…", "Read overview.md", "Read leads.md", "Read cc-0a1b2c3d4.md"]
                     .enumerated().map { AppModel.Activity(text: $0.element, isThought: $0.offset == 0) }

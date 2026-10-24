@@ -8,6 +8,14 @@ public enum AssessmentEngine: String, Codable, CaseIterable, Identifiable, Senda
     public var name: String { self == .claude ? "Claude Code" : "Codex" }
     public var command: String { rawValue }
     public var provider: String { self == .claude ? "Anthropic" : "OpenAI" }
+    /// The context window in tokens that reading budgets are shares of. Claude Code compacts near 1M on Sonnet and Opus;
+    /// Haiku has the smaller window. Codex reports 475K for its GPT models.
+    public func contextWindow(model: String?) -> Int {
+        switch self {
+        case .claude: model?.lowercased().contains("haiku") == true ? 200_000 : 1_000_000
+        case .codex: 475_000
+        }
+    }
     public var setupURL: URL {
         URL(string: self == .claude ? "https://claude.com/code" : "https://developers.openai.com/codex/cli")!
     }

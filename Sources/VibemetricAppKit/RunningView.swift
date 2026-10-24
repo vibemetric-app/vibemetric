@@ -27,8 +27,9 @@ struct RunningView: View {
                             .monospacedDigit()
                             .foregroundStyle(Theme.accent)
                     }
-                    ProgressBar(fraction: Double(percent) / 100)
-                    Text("\(elapsed(ctx.date)) elapsed · usually done within 8 minutes")
+                    ProgressBar(fraction: Double(percent) / 100, chapterStarts: ScoreProgress.chapterStarts)
+                    ChapterLabels(starts: ScoreProgress.chapterStarts, titles: ScoreProgress.chapterTitles)
+                    Text("\(elapsed(ctx.date)) elapsed · usually done within 15 minutes")
                         .scaledFont(12, design: .monospaced)
                         .foregroundStyle(Theme.muted)
                 }
@@ -80,6 +81,8 @@ struct RunningView: View {
 /// A thin rounded bar in the accent color. Drawn rather than a ProgressView, so it also renders in snapshots.
 private struct ProgressBar: View {
     var fraction: Double
+    /// Where each chapter begins, as fractions of the bar; a divider marks every start after the first.
+    var chapterStarts: [Double] = []
 
     var body: some View {
         GeometryReader { geo in
@@ -88,8 +91,29 @@ private struct ProgressBar: View {
                 Capsule().fill(Theme.accent)
                     .frame(width: max(8, geo.size.width * min(max(fraction, 0), 1)))
                     .animation(.easeOut(duration: 0.4), value: fraction)
+                ForEach(Array(chapterStarts.dropFirst()), id: \.self) { start in
+                    Rectangle().fill(Theme.paper).frame(width: 2).offset(x: geo.size.width * start - 1)
+                }
             }
         }
         .frame(height: 8)
+    }
+}
+
+/// The chapter names under the bar, each starting where its chapter starts.
+private struct ChapterLabels: View {
+    var starts: [Double]
+    var titles: [String]
+
+    var body: some View {
+        GeometryReader { geo in
+            ForEach(Array(zip(starts, titles).enumerated()), id: \.offset) { index, chapter in
+                Text("\(index + 1). \(chapter.1)")
+                    .scaledFont(11, weight: .medium)
+                    .foregroundStyle(Theme.muted)
+                    .offset(x: geo.size.width * chapter.0)
+            }
+        }
+        .frame(height: 14)
     }
 }

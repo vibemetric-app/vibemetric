@@ -69,6 +69,28 @@ struct ScanCacheTests {
         return files
     }
 
+    @Test func digestsFillTheTokenBudgetInSelectionOrder() throws {
+        let history = try History()
+        let scan = Scanner.scan(sources: history.sources)
+        let dir = history.root.appendingPathComponent("pack")
+        func digests() throws -> [String: Int] {
+            let folder = dir.appendingPathComponent("sessions")
+            return try Dictionary(uniqueKeysWithValues: FileManager.default.contentsOfDirectory(atPath: folder.path).map {
+                ($0, EvidencePack.estimatedTokens(try String(contentsOf: folder.appendingPathComponent($0), encoding: .utf8)))
+            })
+        }
+        try EvidencePack.write(scan, to: dir, digestTokenBudget: 1_000_000)
+        let all = try digests()
+        #expect(all.count == 3)
+        // Only the session continued since the previous score fits: it is chosen first and the rest would overflow.
+        let previous = EvidencePack.Previous(card: try JSONDecoder().decode(ScoreCard.self, from: Data(CoreTests.sampleCard.utf8)),
+                                             date: ISO8601DateFormatter().date(from: "2026-09-02T12:00:00Z")!)
+        try EvidencePack.write(scan, to: dir, previous: previous, digestTokenBudget: try #require(all["cc-s2.md"]))
+        #expect(try digests().keys.sorted() == ["cc-s2.md"])
+        let index = try String(contentsOf: dir.appendingPathComponent("sessions.tsv"), encoding: .utf8)
+        #expect(index.contains("sessions/cc-s2.md") && !index.contains("sessions/cc-s1.md"))
+    }
+
     @Test func cachedScanMatchesAFreshScan() throws {
         let history = try History()
         let fresh = Scanner.scan(sources: history.sources)

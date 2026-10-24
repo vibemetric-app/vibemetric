@@ -1,0 +1,835 @@
+{
+  "dimensions": [
+    {
+      "dimension": "context_engineering",
+      "competencies": [
+        {
+          "id": "essential_project_context",
+          "title": "Essential project context",
+          "meaning": "Keep the project meaning and judgment criteria AI needs in maintained context: business concepts, consequential decisions and their reasons, priorities, and exceptions that executable checks cannot fully express. Use lint, types, compiler checks, or CI for mechanically enforceable rules instead of repeating them as prose. Retain concise pointers to necessary setup and verification entry points; a command list is not a substitute for judgment context.",
+          "evidence": "Read the authoritative context and its relevant references, then compare them with established project needs and decisions. Identify what a new executor needs to understand about the business, what remains a judgment call, and which repeated rules are already or could reasonably be enforced mechanically. Inspect applicable lint, type, compiler, or CI configuration when that distinction matters; do not assume a rule is enforced because the guide says so. Assess the content itself rather than its length, command count, or one executor's compliance. Use task records to establish which context is needed and whether a documented fact is accurate.",
+          "high": "The maintained context contains the consequential business meaning, decision rationale, priorities, and exceptions needed for the work. Mechanically enforceable rules are handled through executable controls rather than repeated as instructions; the context focuses on what those controls cannot decide. Example: the guide explains who the service serves, what a consequential business term means, and why one outcome takes priority when requirements conflict, including the exception that changes that choice. It links to the setup and verification entry points, while import restrictions and formatting rules live in lint or CI configuration rather than a copied prose checklist.",
+          "medium": "Useful project meaning is documented, but a consequential judgment criterion, decision reason, or exception is missing or ambiguous and must be reconstructed during work. The context may also rely on repeated prose rules for behavior that can reasonably be enforced mechanically. Example: the guide records the service's purpose and how to run its checks, but omits the agreed priority for a known business tradeoff; the person must explain that decision again. Most of the remaining instructions describe formatting and prohibited imports instead of supplying the missing rationale.",
+          "low": "Maintained context gives little of the project meaning the work needs, or misstates it. Example: the guide holds only startup commands and style rules, so the person must explain the business rule behind an existing constraint again during the task.",
+          "whyItHelps": "Executable controls can catch a mechanically detectable violation without relying on AI remembering a sentence. Context remains valuable where those controls cannot decide what a business concept means, why a decision was made, or which outcome should take priority. Making those judgment calls and their failure modes explicit gives AI the information it cannot recover from syntax or a passing build, without burying it in repeated enforcement instructions.",
+          "applicability": "Assess any task done inside a project that has its own conventions, business rules, or prior decisions an executor needs in order to work correctly, whether or not a project guide exists, was read, or covered them. Do not demand documentation of routine facts AI can reliably discover.",
+          "sources": [
+            {
+              "title": "pstack — Encode Lessons in Structure",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/principle-encode-lessons-in-structure/SKILL.md",
+              "note": "Recommends encoding recurring corrections as lint, metadata, runtime checks, or scripts instead of more text. If a lesson requires judgment and cannot be encoded, it calls for a more prominent instruction and a failure-mode example; if the fix is structural, it calls for using that fix rather than adding another instruction. Adopted mechanism: reserve project context for necessary meaning and judgment while enforcing mechanically checkable rules in structure. This principle supports the distinction, not these assessment levels or a requirement to remove useful setup and verification references."
+            }
+          ]
+        },
+        {
+          "id": "guidance_delivery",
+          "title": "Context file organization",
+          "meaning": "Give each AI executor a working route from shared entry guidance to the specialized information its task needs. Keep active guidance compatible across the tools actually used, and organize detail by a useful scope or task trigger. File length, file count, and automatic injection are not the assessed practice.",
+          "evidence": "Follow the effective reading path for the observed client: launch directory, supported discovery settings and overrides, scope rules, explicit reads, references, and retrieved contents. Follow a relevant route into an action that uses the detail. When multiple clients participate, compare the instructions they actually receive. Inspect access or link failures and any repair before judging their effect; do not assume a nested file automatically loads in every client.",
+          "high": "The active entry path reaches compatible shared rules and the needed specialized detail, and observed work applies that detail. The structure makes the relevant information available without making unrelated procedures a prerequisite to ordinary work. Example: a shared entry guide contains common directions and links to setup, release, and interface guidance by task. AI opens the relevant detail when needed, and the clients in use reach the same current common rules without loading unrelated procedures. A single small guide can also satisfy High when it supplies the relevant context effectively.",
+          "medium": "The reading structure delivers useful guidance, but an observed delivery conflict or missing route requires the person's intervention to reach the correct source. Example: the common rules and task-specific pages exist, but one client's entry path still points to an older copy. The person supplies the current path before AI can use the right directions.",
+          "low": "Guidance that exists seldom reaches the executor when needed, or reaches it in conflicting copies. Example: task-specific instructions exist, but the entry guide does not point to them, so the person names the file in each request or the work proceeds without it.",
+          "whyItHelps": "Information can constrain a decision only after the executor receives it. A useful entry map supplies the next document at the point where its details matter, while a shared authoritative rule avoids competing copies. On-demand retrieval can reduce irrelevant context, but adds navigation work; observed task use determines whether the chosen structure is effective.",
+          "applicability": "Assess any task run inside a project where guidance that would help the executor exists or should exist, including tasks where no guide was loaded and the person supplied directions by hand. Evaluate only the tools and reading paths used in the work. Do not impose modular files on an already usable small guide or reward splitting content into imports that all load together.",
+          "sources": [
+            {
+              "title": "Effective context engineering for AI agents",
+              "url": "https://www.anthropic.com/research/effective-context-engineering-for-ai-agents",
+              "note": "The context-retrieval section describes lightweight references, retrieval when needed, and a hybrid of initial context and exploration. It also names navigation overhead. Adopt useful progressive disclosure, not a universal rule to minimize file length or retrieve everything lazily."
+            },
+            {
+              "title": "Custom instructions with AGENTS.md",
+              "url": "https://learn.chatgpt.com/docs/agent-configuration/agents-md",
+              "note": "The discovery section specifies Codex's startup chain from project root to working directory, overrides, fallback names, and a combined size limit. This supports inspecting the effective client path rather than assuming every nested instruction file was injected."
+            },
+            {
+              "title": "How Claude remembers your project",
+              "url": "https://code.claude.com/docs/en/memory",
+              "note": "The loading, imports, and scoped-rule sections distinguish startup imports from conditional retrieval; AGENTS.md support also depends on client settings and version. Adopt client-aware delivery checks. Neither a shared filename nor an import alone proves relevant guidance influenced work."
+            }
+          ]
+        },
+        {
+          "id": "guidance_upkeep",
+          "title": "Context maintenance",
+          "meaning": "Keep active project guidance accurate as commands, locations, constraints, and decisions change. Use an applied maintenance mechanism that handles relevant updates as part of work, rather than depending on additional user intervention for every correction. Retire superseded directions and preserve valid guidance; do not generate documentation work without a real need.",
+          "evidence": "Trace an actual project change or discovered guidance defect to the maintenance trigger, actor, saved authoritative revision, affected references, and check against the new project state. Inspect whether an established rule, workflow step, or automated check caused the update without additional user intervention for that task, and whether the repaired route or instruction was usable in actual work. Distinguish a completed update from a promise, and record later reuse only when observed.",
+          "high": "An established workflow or automated check triggers the relevant upkeep without additional user intervention. AI corrects the authoritative guidance and affected routes, removes or clearly retires contradictory active directions, and checks the repaired content against actual project behavior. Example: a completed change moves a documented operation. The standing maintenance step updates its authoritative command and incoming links, retires the old directions, and checks the revised procedure against the changed project without additional user intervention. A standing instruction counts only when its upkeep behavior actually occurs; a separate scheduler or hook is optional.",
+          "medium": "A useful, accurate repair is completed and checked, but the observed process depends on additional user intervention for that maintenance opportunity, or a partial repair demonstrably leaves competing guidance that requires intervention. Example: the person separately requests an update after an operation moves. AI corrects the documented command and relevant links, retires the old directions, and checks the revised procedure; the accurate repair still depends on that additional user intervention. This is effective upkeep with a person still initiating that recurring step.",
+          "low": "Guidance is seldom updated as the project changes, so outdated directions stay active. Example: a moved command keeps its old path in the guide, and later work follows the stale instruction.",
+          "whyItHelps": "An accurate entry guide becomes misleading when its target moves or its procedure changes. Connecting upkeep to the relevant change closes that gap before the next executor relies on it. Retiring the old direction removes an avoidable choice between apparently valid procedures, while a real use of the revised instruction checks more than its wording.",
+          "applicability": "Assess any task that changes commands, file locations, constraints, or decisions a project guide covers or should cover, or that runs into guidance that no longer matches the project, whether or not anyone updated the guide. AI can maintain confirmed facts automatically without inventing new policy.",
+          "sources": [
+            {
+              "title": "Harness engineering: leveraging Codex in an agent-first world",
+              "url": "https://openai.com/index/harness-engineering/",
+              "note": "The repository-knowledge section describes documentation checks and a recurring agent that compares guidance with code behavior and proposes repairs. This supports applied automatic upkeep; it is one team's engineering account, not proof that a scheduled agent or any exact repository structure is necessary."
+            },
+            {
+              "title": "Encode Lessons in Structure",
+              "url": "https://raw.githubusercontent.com/cursor/plugins/main/pstack/skills/principle-encode-lessons-in-structure/SKILL.md",
+              "note": "The skill recommends encoding recurring corrections in executable structure where possible, while retaining clearer instructions and failure examples for judgment calls. Adopt the distinction between repeatable mechanical upkeep and human policy judgment; do not turn every documentation edit into a new automation system."
+            }
+          ]
+        }
+      ],
+      "boundaries": [
+        "Judge content, delivery, and maintenance from their own evidence. Missing context, a failed reading route, contradictory content, and AI ignoring a rule it already read are different causes.",
+        "This dimension assesses: The content, reading route, and maintenance of project guidance that reaches executors.",
+        "Assessed elsewhere: Preferences and decisions carried across conversations: Memory & Knowledge. Executable procedures: Tool Integration. Whether validation proves quality: Testing & Evals. Enforcement of a documented prohibition: Security."
+      ],
+      "example": {
+        "notice": "Illustrative guidance example, not evidence from this assessment.",
+        "summary": "The project guide records the service's purpose and verification entry point, but leaves a consequential business priority for the person to explain again. Its shared entry links to task-specific detail, and the person separately prompts a checked update when an operation changes.",
+        "expanded": "[pstack — Encode Lessons in Structure](https://github.com/cursor/plugins/blob/main/pstack/skills/principle-encode-lessons-in-structure/SKILL.md) distinguishes executable enforcement from judgment that needs an explicit instruction and a failure-mode example. Here, the documented purpose is useful but the missing priority leaves the content incomplete. The working entry links support delivery, while the prompted, checked revision shows maintenance that still depends on a additional user intervention. Content, delivery, and upkeep are judged from their own evidence rather than from the presence of a guide alone."
+      }
+    },
+    {
+      "dimension": "memory_knowledge",
+      "competencies": [
+        {
+          "id": "capture_scope_lifetime",
+          "title": "Knowledge storage",
+          "meaning": "Preserve information worth carrying into future conversations, with enough meaning, ownership, scope, and duration to distinguish a lasting preference from a temporary condition or a choice for one task.",
+          "evidence": "Connect the original statement or adopted decision to the actual storage operation and inspect its saved result. Check the relevant user or project scope, any date or review condition that matters, and the rule that triggered capture. Identify whether AI captured the information through an existing procedure or the person had to request this particular save. A promise, enabled memory setting, or collection of files alone establishes neither capture nor accuracy.",
+          "high": "A working reusable procedure causes AI to capture relevant knowledge without additional user intervention to save each item. The inspected entry preserves the intended meaning, scope, and lifetime, while temporary choices stay temporary. Example: a standing rule tells AI to save lasting project decisions. During ordinary work, the person settles a report format; AI stores that choice in project memory without an extra request to save it. A tone requested for one reply stays with that reply rather than becoming a permanent preference. A genuine decision about whether a preference should persist may still require the person's approval.",
+          "medium": "An inspected save preserves usable knowledge with its intended scope and lifetime, but a reusable automatic capture procedure is not established; this includes a save requested for that particular item. A completed save that leaves a material scope or duration ambiguous also belongs here. Example: the person asks AI to remember a report format, and AI saves it with the correct project scope. The save is useful, but the record does not establish a procedure that captures later decisions without additional user intervention. Credit the confirmed save without claiming that additional user interventions are always necessary.",
+          "low": "Little reusable knowledge is saved, or what is saved loses its meaning, scope, or lifetime. Example: the person restates the same preference across several conversations because nothing was stored, or a one-off tone request is saved as a permanent default.",
+          "whyItHelps": "Useful persistence carries the decision the person meant to preserve into the situations that need it. Scope and lifetime prevent a local exception from becoming an unrelated default. Automatic capture removes the recurring need to turn ordinary decisions into separate memory-management requests.",
+          "applicability": "Assess any task in which the person states a preference, corrects AI, or settles a decision that would plausibly matter again in a later conversation, whether or not anything was saved. AI or native memory can do the saving; the person need not choose a store or write a file.",
+          "sources": [
+            {
+              "title": "How Claude remembers your project — Auto memory",
+              "url": "https://code.claude.com/docs/en/memory#auto-memory",
+              "note": "Describes AI-written notes derived from preferences and corrections, project-specific storage, and selecting information useful in future conversations. This supports selective automatic capture; it does not establish that any particular person's memory is accurate."
+            },
+            {
+              "title": "Memory overview — Long-term memory and Writing memories",
+              "url": "https://docs.langchain.com/oss/python/concepts/memory",
+              "note": "Distinguishes thread state from memory across conversations, scopes records through namespaces, and describes runtime or background writes. These mechanisms support choosing an appropriate persistence boundary without requiring a particular storage product."
+            }
+          ]
+        },
+        {
+          "id": "reconcile_memory_lifecycle",
+          "title": "Knowledge maintenance",
+          "meaning": "Review retained knowledge when its facts, conditions, or scope may have changed; preserve what remains valid and reconcile corrections, duplicates, conflicts, and expired entries into a clear active answer.",
+          "evidence": "Inspect the prior entries, the change or confirmation that prompted review, the actual maintenance operation, and the resulting active knowledge. Check whether a reusable trigger handled the event without additional user intervention for maintenance. Replacement, merging, retirement, explicit precedence, and deliberate retention can all be appropriate. If a management rule was repaired, inspect an actual subsequent operation before claiming that the revised rule works.",
+          "high": "An existing procedure responds to a relevant correction, changed condition, or review trigger and AI reconciles the affected knowledge without requiring the person to direct routine cleanup. The resulting active entries give a coherent answer and preserve unrelated valid facts. Example: the person changes a previously saved project decision. The established update procedure causes AI to replace the old active entry, preserve useful history separately, and check for conflicting notes without an extra instruction to clean up memory. Review may confirm an entry is still valid; High does not require an edit or an invented conflict.",
+          "medium": "An inspected review or correction produces a coherent, current active memory, but a reusable procedure that initiates routine upkeep is not established; this includes a correction specifically requested by the person. An actual maintenance operation that leaves a material conflict unresolved also belongs here. Example: the person specifically asks AI to replace an outdated memory entry. AI makes an accurate correction, but the record does not establish how later changes will trigger upkeep without additional user intervention. Credit the completed reconciliation without asserting that every correction needs a separate request.",
+          "low": "Retained knowledge is rarely reviewed, so outdated, duplicate, or conflicting entries stay active. Example: an old project rule that no longer applies remains in memory next to its replacement.",
+          "whyItHelps": "A memory can be faithfully retrieved and still be wrong because its facts have changed. Reconciliation makes the active answer current and reduces arbitrary choices between conflicting entries. Event-based upkeep carries corrections forward without making the person repeatedly supervise storage housekeeping.",
+          "applicability": "Assess any task where retained knowledge touching the work already exists, so that a changed fact, conflicting or duplicate entry, or stale instruction could affect it, whether or not anyone reviewed the memory. Automatic means a demonstrated reusable procedure runs when needed; no background service or fixed schedule is required.",
+          "sources": [
+            {
+              "title": "Memory overview — Semantic memory",
+              "url": "https://docs.langchain.com/oss/python/concepts/memory#semantic-memory",
+              "note": "Explains updating an existing profile and the need to update or delete items in memory collections. It identifies over-insertion and over-updating as management difficulties, supporting inspection of the resulting active set rather than credit for appending another note."
+            },
+            {
+              "title": "How Claude remembers your project — How it works",
+              "url": "https://code.claude.com/docs/en/memory#how-it-works",
+              "note": "Describes an index with detailed topic files, on-demand reads, and maintenance that merges or drops stale entries. Successful writes can exceed what the next conversation loads, so storage success alone does not prove maintained knowledge is usable."
+            }
+          ]
+        },
+        {
+          "id": "apply_memory_across_conversations",
+          "title": "Knowledge reuse",
+          "meaning": "Use the relevant active knowledge to make a correct choice in a separate later conversation, respecting its scope, corrections, and retirement instead of making the person supply it again.",
+          "evidence": "Trace a retained fact into a later independent conversation where it affects the requested work, or trace a later choice back to the active memory that informed it. Inspect the actual answer, implementation, or operation and its relevant result. Establish which version applied at that time and whether the person restated the fact or reminded AI to consult memory. An explicit read is unnecessary when injected knowledge is demonstrably used; reading, injection, or a claim of remembering is insufficient by itself.",
+          "high": "Later work uses the applicable active knowledge correctly without additional user intervention to consult memory or a repetition of the saved fact. The produced result confirms that the knowledge guided the work. Example: an earlier conversation saves the project's report format, and a standing startup instruction retrieves relevant memory. In a new conversation, the person requests a report without repeating the format or asking AI to consult memory. AI receives the saved decision through startup or retrieval and produces the report in that format. A native retrieval feature or an established startup procedure can supply the memory. Installation, a loaded note, or repeating the decision in a progress message earns no credit without the actual choice and result.",
+          "medium": "The later result ultimately applies the retained knowledge, but the person has to repeat it or explicitly redirect AI to the memory before it governs the work. Example: AI starts a later report in the wrong format. The person points it to the saved decision, and AI then uses the correct format in the delivered report. The correction succeeds, while the person still carries the recall burden.",
+          "low": "Later conversations seldom use the retained knowledge, or use the wrong version. Example: a saved report format is ignored and the person has to restate it, or AI follows a retired entry.",
+          "whyItHelps": "Persistence becomes useful when it changes the work that reaches the person. Examining a later result separates effective recall from storage and prompt loading, while respecting scope prevents an accurate fact about one project from distorting another.",
+          "applicability": "Assess any later conversation whose work touches something the person had already stated, decided, or had saved in an earlier conversation, whether or not that knowledge was used. A correction in the original conversation establishes neither persistence nor later use.",
+          "sources": [
+            {
+              "title": "pstack — Recall (skills/recall/SKILL.md)",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/recall/SKILL.md",
+              "note": "Reconstructs relevant goals, decisions, and corrections before work resumes, limits retrieval to the intended workspace and topic, and checks findings against live state. This supports relevant, current recall; invoking the skill alone does not prove that its findings changed the work."
+            },
+            {
+              "title": "Effective context engineering for AI agents — Structured note-taking",
+              "url": "https://www.anthropic.com/research/effective-context-engineering-for-ai-agents",
+              "note": "Describes agents persisting notes outside the context window and reading them after resets to continue work. The adopted mechanism is continuity through notes that guide subsequent actions, rather than accumulating an archive."
+            }
+          ]
+        }
+      ],
+      "boundaries": [
+        "For storage and maintenance, High requires a working automatic procedure and an observed correct operation; correct on-demand management is Medium. Storage, maintenance, and reuse need separate evidence, so do not merge failures to save, retrieve, scope, update, or follow knowledge into one presumed memory failure. Identify whether the person, AI, or storage mechanism was responsible.",
+        "This dimension assesses: Storage, maintenance, and later use of the person's preferences, corrections, decisions, and facts across conversations, separate from any memory feature built for their product.",
+        "Assessed elsewhere: Project guide repairs: Context Engineering. Saved procedures: Tool Integration."
+      ],
+      "example": {
+        "notice": "Illustrative output example, not evidence from this assessment.",
+        "summary": "AI saved the project's report format under an existing memory rule, keeping a one-reply tone exception out of lasting preferences. In a later conversation, AI received that saved format through the startup procedure and used it in the delivered report without additional user intervention.",
+        "expanded": "The memory sources connect useful storage to accurate boundaries and later application. In this example, the saved entry records what should persist and where it applies. The later conversation supplies the separate reuse evidence: AI receives the relevant entry through the existing startup route and the report follows it, even though the person did not repeat the decision or request a memory lookup. A note merely appearing in the context would not establish that final connection."
+      }
+    },
+    {
+      "dimension": "tool_integration",
+      "competencies": [
+        {
+          "id": "direct_service_work",
+          "title": "Tool connections",
+          "meaning": "Use a suitable connection to carry out the service work a task actually needs, and carry the returned records or operation result through to the requested deliverable.",
+          "evidence": "Follow the request into the chosen CLI, API, MCP tool, or equivalent connection. Inspect the account, project, record identifiers, inputs, execution result, and resulting deliverable or service state. Determine whether returned information was used in the next necessary action. A listed connection, capability lookup, successful handshake, or completion message alone does not establish completed service work.",
+          "high": "The agent performs the required authorized service operations against the correct target and uses the returned information to finish the requested work; the inspected result supports that completion. Example: AI uses connected tools to read the records needed for a report, obtains missing items through the same connections, and returns a report that matches those records. A one-off request can meet High through its own completed operations.",
+          "medium": "The connection performs a useful part of the task, but an observed, avoidable handoff leaves the person to transfer information or perform a routine operation the available tool could handle. Example: AI reads record identifiers through a working connection, but asks the person to copy the associated details even though its connected tool can retrieve them. The report is finished only after that manual transfer.",
+          "low": "Service work that an available connection could do is mostly left to the person, or is done against the wrong target. Example: AI prints commands for the person to run in a dashboard although a working CLI is available, or reads the test account instead of the live one.",
+          "whyItHelps": "The connection gives the agent access to the records and actions needed to finish the request. Using the returned identifiers and state removes routine copying by the person and prevents a successful tool response from being mistaken for completion of a different task.",
+          "applicability": "Assess any task whose work involves an external service, repository host, database, issue tracker, or similar system, whether AI reached it through a connection or the person relayed the data by hand. The person need not write the integration.",
+          "sources": [
+            {
+              "title": "Writing effective tools for agents — with agents",
+              "url": "https://www.anthropic.com/research/writing-tools-for-agents",
+              "note": "Recommends task-focused tools, useful returned context, explicit input/output contracts, and verifiable outcomes. The adopted mechanism is a connected operation whose returned data supports completing the user's actual task, rather than a bonus for the number of tools."
+            },
+            {
+              "title": "Tools — Model Context Protocol",
+              "url": "https://modelcontextprotocol.io/specification/2025-06-18/server/tools",
+              "note": "Defines tool discovery separately from invocation and describes execution errors returned with isError: true. This supports inspecting the actual operation result instead of treating any response or successful connection as completed work."
+            }
+          ]
+        },
+        {
+          "id": "reusable_executable_procedures",
+          "title": "Reusable skills",
+          "meaning": "Put recurring operational knowledge into a runnable skill, command, script, or configured tool procedure that can handle another relevant task with new inputs.",
+          "evidence": "Inspect the retained procedure and the operational resources it invokes, including how it obtains task inputs, selects the environment, performs actions, and produces the needed output. Connect that version to an independent later task and its inspected result. Record whether the person named the procedure, a standing route selected it, or the person had to reconstruct its steps. Calls repeated within one run are not independent reuse.",
+          "high": "A retained procedure runs on a later relevant task with changed task inputs and produces the intended inspected output without the person explaining its operating sequence again. The agent can discover routine inputs from the documented sources. Example: a saved skill gathers the required inputs, runs its processing steps, and returns a checked report. On a later request it accepts the new date range and repeats the work without the person explaining the sequence again. Naming the skill and correct automatic selection can both establish reuse.",
+          "medium": "The saved procedure is used on a later task and contributes useful execution, but a demonstrated omission still makes the person restate an operational step before the result is usable. Example: a reused skill completes the main calculation, but omits the export step. The person must explain that step again before receiving a usable report.",
+          "low": "Recurring work is rebuilt from prompts each time, or the retained procedure does little of the recurring work. Example: the same release steps are explained again in each session, or the saved skill only lists tools without performing the task.",
+          "whyItHelps": "A working retained procedure carries the operating sequence between tasks, so a new request can focus on the new period or desired result. Bundled operations and clear input sources make reuse possible without turning the person into the tool's instruction manual.",
+          "applicability": "Assess any task whose kind of work recurs in the records (release, report, deploy, data refresh, the same check across sessions) or that the person says they do repeatedly, whether or not a procedure was saved. An actual first invocation can establish Medium.",
+          "sources": [
+            {
+              "title": "Specification — Agent Skills",
+              "url": "https://agentskills.io/specification",
+              "note": "Separates discovery metadata, loaded instructions, and optional executable resources; recommends operational steps, input/output examples, and documented script dependencies. The rubric adopts the runnable instruction/resource package while requiring observed reuse beyond format validity."
+            },
+            {
+              "title": "Writing Skills",
+              "url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/writing-skills/SKILL.md",
+              "note": "Distinguishes reusable skills from a narrative of one solved task and checks technique skills through application to a new scenario. This supports requiring another actual use rather than crediting a saved retrospective as a reusable procedure."
+            }
+          ]
+        },
+        {
+          "id": "tool_and_procedure_upkeep",
+          "title": "Tool maintenance",
+          "meaning": "Keep the saved operational mechanism aligned with changed services, environments, or task requirements, and confirm that the affected operation still works.",
+          "evidence": "Trace an actual change or failure to the diagnosis, the retained configuration or procedure version, an invocation of the affected path, and the inspected output. Distinguish an effective saved repair from a conversation-only workaround. Where upkeep recurs, inspect the standing instruction, event, or check that brings it into relevant tasks and whether that route is actually applied.",
+          "high": "The observed maintenance need leads to a targeted saved repair, followed by a real invocation showing that the affected behavior now meets the need. When maintenance recurs, an applied standing route handles routine detection and repair without requiring the person to repeat the maintenance checklist. Example: a service changes the data its tool returns. The existing check detects the change, AI updates the saved skill's mapping and report step, and a real run confirms that the revised tool combination works without additional user intervention to repeat the maintenance steps. A checked existing mechanism that already handles the change may be retained.",
+          "medium": "The task reaches a corrected result, but the repair remains partly in the conversation or requires a demonstrated manual patch, leaving the saved mechanism incomplete. Example: AI fixes the data-reading step but leaves the saved report step outdated. The person supplies the missing adjustment, and AI corrects only the current output without saving the complete repair.",
+          "low": "Known problems in saved tools or procedures are left in place, so later runs repeat them. Example: a skill keeps producing the same wrong report after its data mismatch was noticed.",
+          "whyItHelps": "Saving the repair changes what the next invocation will do. Exercising the exact affected path reveals whether the correction reaches the delivered output, while an applied upkeep route prevents the same operational repair from becoming a recurring additional user intervention for the person.",
+          "applicability": "Assess any task where a saved tool, script, skill, or configuration the person relies on is used and misbehaves, is out of date, or no longer fits the task, whether or not it was repaired. An inspected targeted repair can establish Medium while its effect remains unconfirmed; upkeep need not expand access or bypass decisions.",
+          "sources": [
+            {
+              "title": "Automate me",
+              "url": "https://raw.githubusercontent.com/cursor/plugins/main/pstack/skills/automate-me/SKILL.md",
+              "note": "Its update path reuses the existing skill, considers evidence since its last edit, preserves uncontradicted sections, and revises changed rules in place. The adopted mechanism is targeted maintenance of retained instructions; its personal-mode evaluation advice is not treated as proof of executable workflow behavior."
+            },
+            {
+              "title": "Writing Skills",
+              "url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/writing-skills/SKILL.md",
+              "note": "Recommends identifying the specific failure, changing the guidance to address it, and checking application again. The rubric adopts that observed failure-to-repair-to-use connection, without importing its mandatory TDD or subagent workflow as a scoring condition."
+            }
+          ]
+        },
+        {
+          "id": "usable_sharing",
+          "title": "Skill sharing",
+          "meaning": "Transfer a working procedure to another intended user in a form that can operate with that user's environment and inputs.",
+          "evidence": "Inspect the version already used in the person's own work, the package or shared files, supporting scripts, setup and configuration directions, and a concrete invocation and expected output. Follow a recipient's run or a fresh-environment rehearsal through those directions. Look for hidden local paths, omitted helpers, and setup knowledge that the author has to supply separately. Publicity and repository stars are not usability evidence.",
+          "high": "The provided package includes the needed operational resources and directions, and a recipient or fresh-environment rehearsal reaches the intended output using those resources and its own configuration without undocumented author-local steps. Example: a shared skill includes its helper files, setup directions, and required configuration. Another person, or a fresh-environment rehearsal, uses their own configuration and obtains the documented result without extra setup instructions from the author. The author or AI may perform the rehearsal.",
+          "medium": "The shared procedure can produce its intended output, but the observed setup or invocation still depends on avoidable guidance outside the package. Example: another person can run the shared skill only after the author separately explains where a required configuration file belongs; that instruction is still missing from the package.",
+          "low": "Working procedures stay unshared, or what is shared cannot run for the recipient. Example: a useful personal skill stays only on the author's computer, or the shared package depends on a helper only the author has.",
+          "whyItHelps": "A usable package transfers the operating capability together with its environment requirements. Running it from the recipient's starting point exposes dependencies hidden by the author's machine and shows whether the shared instructions actually lead to the intended result.",
+          "applicability": "Assess any task where the person has, or in this task creates, a working reusable skill, tool, or procedure that another person or team could use, whether or not it was shared. Anyone can share such work by publishing it or distributing it to a team, so keeping it unshared is non-practice and is Low. A repository link or guide alone establishes no execution; independent setup and use by another person or in a fresh environment distinguishes High from Medium. Private team distribution qualifies regardless of audience size.",
+          "sources": [
+            {
+              "title": "Specification — Agent Skills",
+              "url": "https://agentskills.io/specification",
+              "note": "Describes environment compatibility information, supporting resources, relative file references, and self-contained scripts or explicit dependencies. These support portable packaging; the fresh-environment demonstration is this rubric's evidence requirement, not a claim made by format validation."
+            },
+            {
+              "title": "Writing Skills",
+              "url": "https://raw.githubusercontent.com/obra/superpowers/main/skills/writing-skills/SKILL.md",
+              "note": "Recommends runnable examples and testing whether a user can find and apply a reference, including gaps in common use cases. This supports checking the receiving user's actual path through shared operating material."
+            }
+          ]
+        }
+      ],
+      "boundaries": [
+        "This dimension assesses: Completed tool-mediated operations, reusable executable procedures, and their maintenance and sharing in the person's own work. Building an integration for customers is not personal workflow use.",
+        "Assessed elsewhere: A command mentioned in a guide: Context Engineering. Assignments and handoffs: Task Mapping. What a check proves: Testing & Evals. Authorization boundaries: Security."
+      ],
+      "example": {
+        "notice": "Illustrative output example, not evidence from this assessment.",
+        "summary": "Your connected tools gathered the records needed for a report. A later request reused the saved skill with new inputs, a repair was saved back to that skill, and the shared copy still needed extra setup help.",
+        "expanded": "The tool sources distinguish direct operation, later reuse, maintenance, and sharing. The connection supplies real inputs; a later invocation shows that the saved skill can repeat its steps. A checked repair must remain in the saved skill to help the next run. Sharing remains partial when another person needs setup information that the package omits."
+      }
+    },
+    {
+      "dimension": "task_mapping",
+      "competencies": [
+        {
+          "id": "checkable_work_units",
+          "title": "Task breakdown",
+          "meaning": "Shape the necessary work into bounded assignments with an inspectable result and a meaningful completion condition. Choose boundaries that cover the request without leaving gaps or duplicating responsibility. One coherent assignment is enough for a small task.",
+          "evidence": "Follow the request and the arrangement actually used into assignment briefs, task records, returned artifacts, and per-part checks. Identify what each part owns, what it must return, and how its executor judged that result. Credit prior instructions or an AI-proposed division the person adopts when execution applies them; a diagram, role name, or unused plan is insufficient.",
+          "high": "The applied units cover the necessary deliverables, have distinct responsibilities, and return results that are examined against their own completion conditions. Example: a report request is divided into data collection and report preparation. Each part has a clear owner, an output, and a check for completion; together they cover the requested report. A label correction remains one assignment and its rendered replacement is checked.",
+          "medium": "The executed assignments have useful boundaries and concrete returns, but an observed ambiguity leaves part of completion to guesswork. Example: data collection and report preparation have separate outputs, but the handling of invalid records remains undecided. The person assembling the report must settle that gap.",
+          "low": "Large work runs as one undifferentiated request, or its pieces lack clear ownership and checkable results. Example: login, payments, and a dashboard are requested in one run with no parts or completion conditions, so a failure cannot be traced to a part.",
+          "whyItHelps": "A bounded result gives the executor a target and lets another step judge what is ready. Relating all units to the request exposes omitted work; distinguishing their responsibilities prevents two returns from being mistaken for coverage of two different needs.",
+          "applicability": "Assess any task that produces a deliverable, large or small, whether the work was divided, kept whole on purpose, or simply started without a stated scope or completion condition. The person need not divide work personally.",
+          "sources": [
+            {
+              "title": "Planning and Task Breakdown — skills/planning-and-task-breakdown/SKILL.md",
+              "url": "https://github.com/addyosmani/agent-skills/blob/main/skills/planning-and-task-breakdown/SKILL.md",
+              "note": "Recommends verifiable task results, acceptance criteria, verification steps, and dependencies; it also excludes obvious small changes from a separate planning exercise. These mechanisms support checkable boundaries, without adopting its file-count or checkpoint quotas."
+            },
+            {
+              "title": "How we built our multi-agent research system",
+              "url": "https://www.anthropic.com/research/multi-agent-research-system",
+              "note": "Describes delegation briefs with an objective, expected format, tools and sources, and boundaries, and reports duplicate work and gaps from vague briefs. The adopted mechanism is explicit responsibility and a usable return, not a required number of agents."
+            }
+          ]
+        },
+        {
+          "id": "connected_execution_integration",
+          "title": "Result integration",
+          "meaning": "Carry the actual output of one part to the part that needs it, respect prerequisite order, and assemble a result whose connected assumptions agree. Separate completion claims must resolve into the requested combined result.",
+          "evidence": "Trace the relevant producer artifact or revision into its consumer's reads, input, or execution. Inspect how shared definitions were settled, who assembled the returns, and the observed comparison at their connection: fields, units, versions, responsibilities, or coverage. Then connect that assembled artifact to the requested outcome. A worker saying 'done' or a generic check passing does not prove this chain.",
+          "high": "The dependent part uses the completed prerequisite actually produced, and observed integration confirms that the returns fit and satisfy the combined request. Accessible intermediate outputs reach their consumers through the workflow without repeated human copying. Example: the report step uses the records returned by the collection step. Their field names and units agree, and a check of the assembled report confirms that the parts work together.",
+          "medium": "Actual outputs reach the next part and are assembled, but a known unperformed boundary check or repeated manual relay leaves a connection unestablished. Example: the collection and report changes are assembled, but the recorded check uses a separately typed sample instead of the actual returned records. The connection between the two parts remains unverified.",
+          "low": "Outputs that depend on each other are handed over manually, late, or in incompatible forms, and the combined result is not checked. Example: the collection step and the report use different field names, and both are accepted as done.",
+          "whyItHelps": "A result can be correct in isolation and unusable to its consumer. Following the exact return across the boundary reveals absent or stale inputs, while comparison after assembly exposes disagreements that isolated completion reports cannot settle.",
+          "applicability": "Assess any task whose result is built from more than one piece (several steps, files, sessions, or executors whose outputs feed each other), whether or not anyone checked that the pieces fit. A failure wholly inside a correctly connected part is not a mapping failure.",
+          "sources": [
+            {
+              "title": "Building effective agents",
+              "url": "https://www.anthropic.com/research/building-effective-agents",
+              "note": "Distinguishes sequential output-to-input chains from independent parallel sections and describes an orchestrator synthesizing worker returns. These patterns support tracing real dependencies and aggregation; the rubric additionally requires observed fit with the person's requested result."
+            },
+            {
+              "title": "Swarm — skills/swarm/SKILL.md",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/swarm/SKILL.md",
+              "note": "Requires a defined final artifact and completion condition, self-contained briefs, inspection of terminal results, and coverage of required slices before consolidation. The adopted mechanism is checking returns against their briefs and exposing missing contributions instead of treating them as success."
+            }
+          ]
+        },
+        {
+          "id": "workload_appropriate_assignment",
+          "title": "Work assignment",
+          "meaning": "Match responsibility, context, access, and execution order to the actual work. Use one executor, sequential parts, or concurrent parts when that arrangement permits useful work without conflicting ownership or unsupported assumptions.",
+          "evidence": "Compare each assignment's requirements with the context, tools, access, and writable scope its executor actually receives. Inspect dependencies and concurrent activity for shared-state conflicts, duplicated effort, and waiting caused by missing prerequisites. Distinguish deliberate independent review or alternative attempts from accidental overlap. Count the observed fit, not the number of workers or tool calls.",
+          "high": "Execution demonstrates that assignments have the required capabilities and that ownership and ordering let their results fit. Dependent work waits for the shared prerequisite; concurrent work has independent scope or an explicit comparison purpose. Example: one owner settles the shared data definition before dependent work starts. Independent work proceeds separately, and the returned parts fit that definition. The same arrangement can run sequentially in one session.",
+          "medium": "The arrangement enables useful progress but reveals a preventable capability or ownership mismatch that requires an extra coordination step. Example: the report assignment has a useful scope but receives an outdated input definition. An additional coordination step supplies the current definition before the work can finish. The mismatch is corrected rather than repeatedly imposed.",
+          "low": "Assignments ignore the capability, context, ownership, or order the work needs. Example: two workers edit the same shared definition at once, or a dependent task starts before its input exists.",
+          "whyItHelps": "An executor cannot complete work that requires unavailable inputs or access. Settling shared prerequisites and ownership lets useful independent work proceed while avoiding results built on incompatible assumptions. A suitable single-session sequence can achieve this without coordination overhead.",
+          "applicability": "Assess any task where there was a choice about who or what does the work (one agent, subagents, parallel runs, the person, or a sequence of steps), including tasks where a single executor was used by default.",
+          "sources": [
+            {
+              "title": "Dispatching Parallel Agents — skills/dispatching-parallel-agents/SKILL.md",
+              "url": "https://github.com/obra/superpowers/blob/main/skills/dispatching-parallel-agents/SKILL.md",
+              "note": "Uses parallel investigations for independent domains, warns against shared state and interfering edits, and requires checking that returned fixes do not conflict. This supports the independence and ownership test; its worker-count examples are not scoring requirements."
+            },
+            {
+              "title": "Building effective agents",
+              "url": "https://www.anthropic.com/research/building-effective-agents",
+              "note": "Recommends beginning with the simplest effective arrangement and adding complexity when useful. This supports crediting a coherent single executor and choosing dependency chains or parallel sections according to the work."
+            }
+          ]
+        },
+        {
+          "id": "maintain_reuse_structure",
+          "title": "Reusable workflows",
+          "meaning": "Keep task boundaries and handoffs useful as work changes, and carry a demonstrated arrangement into comparable later work. Preserve a working structure or revise a structural cause using execution evidence, instead of reconstructing the same assignments each time.",
+          "evidence": "Compare the applied arrangement across a relevant change or independent matching tasks. Trace observed gaps, collisions, waiting, or successful connections to retained or revised ownership, task size, order, and handoffs. For recurring work, inspect whether an existing entry point retrieves and applies the current structure without the person restating it, and whether later outputs demonstrate its fit. A stored procedure alone is insufficient.",
+          "high": "The active structure is checked against changed or comparable work; any affected responsibility and handoff are kept aligned before dependent work uses them, and subsequent returns demonstrate that the connections work. For recurring work, an ordinary request retrieves and applies the demonstrated structure without additional user intervention to rebuild its assignments. Example: a later request reuses a saved task plan. When the input format changes, the plan's responsibilities and handoffs are updated together before dependent work uses them. Inspected connections that still fit can remain unchanged.",
+          "medium": "Continuing or later work uses a workable structure, but its upkeep or reuse still depends on the person reconstructing coordination that the workflow could carry forward. Example: a later task reuses the same division successfully only after the person repeats who owns each part and how results should be handed over. The saved plan still contains the old arrangement. The result works, while maintained reuse remains incomplete.",
+          "low": "Each similar task rebuilds its arrangement from scratch, or known structural problems carry into the next run. Example: a dependency order that caused trouble before is repeated unchanged in the next comparable run.",
+          "whyItHelps": "Reuse preserves decisions that already made the parts work together. Keeping the active structure aligned with changed responsibilities prevents an old handoff from silently governing new work. Observing subsequent execution distinguishes an effective structural repair from an instruction that was merely saved.",
+          "applicability": "Assess any task whose arrangement of parts and handoffs has appeared before in the records or will plausibly recur, whether the arrangement was reused, rebuilt from scratch, or left stale.",
+          "sources": [
+            {
+              "title": "Encode Lessons in Structure — skills/principle-encode-lessons-in-structure/SKILL.md",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/principle-encode-lessons-in-structure/SKILL.md",
+              "note": "Recommends encoding repeated corrections in an executable or structural mechanism, while leaving judgment-dependent lessons as clearer guidance with an example. This supports a reusable assignment mechanism without automating personal judgment. Actual later application and maintained handoffs are rubric requirements, not claimed validation from this source."
+            }
+          ]
+        }
+      ],
+      "boundaries": [
+        "Credit the arrangement the person requests or adopts when it is actually applied, and attribute an AI-designed division to AI.",
+        "This dimension assesses: The applied division, ownership, dependencies, transfer of outputs, assembly of the result, and reusable work structure. A plan counts only when its arrangement guides actual work.",
+        "Assessed elsewhere: Model, effort, and resource tradeoffs: Efficiency & Cost. What a check proves: Testing & Evals. The next action after a result: Feedback Loops. The person's own decisions: Human Steering."
+      ],
+      "example": {
+        "notice": "Illustrative output example, not evidence from this assessment.",
+        "summary": "You separated data collection from report preparation, and the report used the records returned by the collection task. A later request reused the same assignment plan, updating the shared input definition before dependent work began.",
+        "expanded": "The task-planning sources support clear ownership, usable returned work, and explicit dependencies. In this example, each part has a defined result, the dependent part consumes the actual return, and the assembled report is checked. Later reuse applies the same plan while keeping the shared input definition current; saving a plan alone would not demonstrate that reuse."
+      }
+    },
+    {
+      "dimension": "feedback_loops",
+      "competencies": [
+        {
+          "id": "results_guide_next_step",
+          "title": "Results and next steps",
+          "meaning": "Use an observed result to decide whether to finish, make a targeted correction and check again, investigate differently, or hand back an unresolved decision. Assess the connection from a result to the action it causes.",
+          "evidence": "Follow one independent task from its applicable pass conditions to the actual returned observation, the action taken because of it, and the next observed state. Read command output, product observations, review findings, or evaluator feedback together with the correction, rerun, and completion report. For delegated work, trace the finding to its responsible executor and back to the combined result. Attribute the person's adopted instructions separately from AI's own execution. A check command without its output, a saved rule, or an executor's success message alone does not establish this connection.",
+          "high": "The observed state controls what happens next, and the episode reaches an endpoint supported by that state. AI uses a failure's diagnostic to correct the relevant cause, obtains a fresh result, and chooses the next action from it. A passing first attempt can lead directly to completion; no failure or extra round is required. Example: the project's report comparison finds missing refund rows. AI corrects the exclusion rule, generates the report again, reads the matching totals, and finishes. If the comparison already matches, it finishes from that result.",
+          "medium": "A result causes a relevant action, but an inspected completed episode leaves that action's effect unconfirmed. Example: AI reads the project's refund mismatch and changes the exclusion rule, then ends the task saying the repair is ready without generating the report again. The result influenced the correction, but no observed result closes that correction path.",
+          "low": "Results seldom change what happens next: failures are ignored, retried without a new hypothesis, or the work is called done despite them. Example: the comparison still shows missing refunds, but the report is marked complete.",
+          "whyItHelps": "Feedback helps when it changes a decision. A correction linked to the diagnostic addresses the observed problem, and a fresh result establishes whether that correction worked. Recognizing a passing endpoint also prevents extra work after the required outcome is established.",
+          "applicability": "Assess any task in which a command, test, build, review, or product observation produced output, whether or not that output changed what happened next. The person need not run the check or write the fix.",
+          "sources": [
+            {
+              "title": "Anthropic — Building effective agents",
+              "url": "https://www.anthropic.com/research/building-effective-agents",
+              "note": "The evaluator-optimizer pattern uses explicit criteria and useful evaluation feedback to guide revision. The agent pattern obtains environmental results to assess progress and can stop at completion. Adopted mechanism: observations determine revision or completion; adding evaluators or iterations is not itself evidence of improvement."
+            },
+            {
+              "title": "obra/superpowers — Verification Before Completion",
+              "url": "https://github.com/obra/superpowers/blob/main/skills/verification-before-completion/SKILL.md",
+              "note": "Its gate reads actual output before making a status claim and checks a delegated executor's result. Adopted mechanism: the reported endpoint follows observed evidence, including a fresh result after a repair, rather than a completion message."
+            },
+            {
+              "title": "pstack — Fix Root Causes",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/principle-fix-root-causes/SKILL.md",
+              "note": "Reproduce, inspect actual state, and trace a symptom to the first wrong decision. It warns that swallowed errors and inappropriate retries can hide the fault. Adopted mechanism: direct corrective action at the supported cause without erasing the failure signal."
+            }
+          ]
+        },
+        {
+          "id": "resolve_execution_blockers",
+          "title": "Execution recovery",
+          "meaning": "Let AI identify and resolve routine obstacles that prevent work or checks from running, within the task's authority. When safe recovery is unavailable, stop with the evidence and exact assistance needed, preserving completed work for resumption.",
+          "evidence": "Inspect the failed command or unavailable dependency, relevant environment and state checks, the diagnosis, the authorized recovery or changed approach, and an actual rerun. Read applicable retry, permission, and resource limits and what happened when they were reached. For a handback, inspect the blocked action, completed results, unresolved scope, required access or decision, and any later resumption. Determine whether AI investigated accessible facts itself or repeatedly made the person relay diagnostics it could obtain.",
+          "high": "AI collects the available diagnostic, distinguishes a recoverable execution problem from a permission or decision boundary, and resolves a routine authorized problem without requiring the person to supply discoverable facts. It reruns the affected operation before proceeding. When recovery needs unavailable authority or an unresolved human decision, it applies a bounded stop condition and provides a usable handback. Example: the project's local verifier cannot start under the selected runtime. AI reads the repository's runtime requirement, selects an already installed compatible runtime, and confirms startup and the resumed check. If the remaining staging comparison is denied, it stops that path, identifies the needed read role, and retains the confirmed local results.",
+          "medium": "AI detects the execution obstacle and takes a relevant recovery or stopping action, but the observed handling leaves avoidable work with the person or loses the route to resumption. Example: AI identifies the project's wrong runtime but makes the person repeatedly inspect the locally accessible version and rerun the command, or stops at the staging denial with only 'access blocked' and no indication of the comparison still needed. Do not count a genuinely necessary access grant or product decision as avoidable human work.",
+          "low": "Obstacles mostly go back to the person as raw errors, are worked around unsafely, or are reported as success. Example: AI asks the person to check a runtime version it could read itself, or reports a blocked comparison as passed.",
+          "whyItHelps": "Execution failures can prevent useful feedback from being produced at all. Diagnosing accessible state and repairing the relevant environment restores that path. Bounded recovery preserves authority and resources, while a precise handback lets the responsible person unblock the specific remaining action without reconstructing the whole task.",
+          "applicability": "Assess any task in which something stopped execution (a failed command, missing dependency, permission denial, timeout, or limit), whether AI diagnosed it, handed the raw error to the person, or ignored it. An evidence-backed stop can be High even though the blocked operation stays unverified; this judges handling of the obstacle, not the blocked behavior.",
+          "sources": [
+            {
+              "title": "addyosmani/agent-skills — Debugging and Error Recovery",
+              "url": "https://github.com/addyosmani/agent-skills/blob/main/skills/debugging-and-error-recovery/SKILL.md",
+              "note": "Preserves failure evidence, localizes the affected layer, and distinguishes build configuration, dependencies, environment, and external-service causes. Adopted mechanism: diagnose the actual execution obstacle before selecting a recovery, then resume from verification rather than suppressing the failure."
+            },
+            {
+              "title": "obra/superpowers — Systematic Debugging",
+              "url": "https://github.com/obra/superpowers/blob/main/skills/systematic-debugging/SKILL.md",
+              "note": "Reads errors, reproduces behavior, inspects configuration across component boundaries, tests a specific hypothesis, and changes course after unsuccessful fixes. Adopted mechanism: evidence-guided recovery and a stopping boundary. The source's particular attempt count is not adopted as a universal scoring requirement."
+            },
+            {
+              "title": "pstack — Create a verification skill",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/create-verification-skill/SKILL.md",
+              "note": "Investigates repository facts before asking the user and includes a read-only instance health check. Cleanup removes only instances the run created and preserves evidence. Adopted mechanism: investigate routine setup independently and recover within the owned environment."
+            }
+          ]
+        },
+        {
+          "id": "maintain_working_loop",
+          "title": "Workflow maintenance",
+          "meaning": "Reuse a working result-to-action procedure in comparable tasks without additional user intervention each time. Keep its diagnostic routes, responsible executor, recovery limits, and stopping decisions aligned with actual work, retaining or repairing the existing mechanism as evidence warrants.",
+          "evidence": "Connect the executed procedure to a separate later applicable task, its automatic invocation or default AI use, the returned results reaching the responsible AI, and the actions those results caused. Inspect observed drift or repeated ineffective handling, any revision to result routing or decision rules, and actual operation afterward. A hook, saved skill, scheduled job, or instruction alone proves neither invocation nor an effective loop. Do not infer a broken route solely because no later run is available.",
+          "high": "Later comparable work follows the reusable loop without the person having to request verification or relay accessible results again. Its results actually reach the executor that can act, and evidence supports retaining the working route or fixing demonstrated drift. Any changed route is exercised before claiming its effect. Example: the project' completion procedure runs its existing verifier and returns diagnostics to the implementing AI. A later export change uses that route without additional user intervention; an observed failure reaches AI, AI repairs it, and the new result determines completion. If later checks pass and the route remains suitable, deliberate retention meets the same level. Only branches actually reached need to be demonstrated.",
+          "medium": "A reusable route operates in later work, but an observed connection still depends on repeated human prompting or relay, or a demonstrated procedure revision is applied without checking its intended effect despite available results. Example: the project automatically runs its verifier, yet the implementing AI never receives its failed output until the person pastes it. This is a partially connected loop even though the verification job itself works.",
+          "low": "Feedback handling is rebuilt or prompted each time, and known gaps in the loop stay. Example: the person asks for the same verification in every task, or failed results keep landing in a log nobody reads.",
+          "whyItHelps": "A reusable connection carries successful feedback handling into the next task, reducing the need for the person to restart it manually. Actual reuse reveals stale assumptions, missing result delivery, or limits that no longer fit. Repairing that specific connection preserves useful work and avoids creating competing procedures.",
+          "applicability": "Assess any task of a kind that recurs in the records (the same verification, check, or result-handling need in more than one session), whether a reusable loop handled it, the person re-requested it, or it was skipped. High requires observed later use without additional user intervention for each task.",
+          "sources": [
+            {
+              "title": "pstack — Maintain a verification skill",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/maintain-verification-skill/SKILL.md",
+              "note": "Distinguishes procedure drift, harness gaps, and product regressions; checks instance health after surprising behavior; reruns harness fixes; and reports clean, changed, or blocked outcomes. Adopted mechanism: maintain the existing feedback route against actual execution and preserve honest outcomes."
+            },
+            {
+              "title": "pstack — Encode Lessons in Structure",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/principle-encode-lessons-in-structure/SKILL.md",
+              "note": "Recurring corrections should become an appropriate executable check or structural mechanism where possible. Lessons that require judgment remain guidance with a concrete example. Adopted mechanism: replace repeated manual reminders with an applied reusable connection when the lesson can be operationalized."
+            }
+          ]
+        }
+      ],
+      "boundaries": [
+        "Retries need a diagnostic purpose or a supported transient-recovery reason and must respect applicable limits. Never reward endless retries, suppressed failed checks, widened permissions, unauthorized side effects, or claiming blocked work complete. Preserve successful evidence when resuming unless changed inputs require rechecking.",
+        "This dimension assesses: What a returned result causes next, recovery from obstacles that block execution, and upkeep of a reusable loop.",
+        "Assessed elsewhere: Whether a check reaches the behavior and discriminates success: Testing & Evals. The person's interpretation of evidence: Human Steering."
+      ],
+      "example": {
+        "notice": "Illustrative output example, not evidence from this assessment.",
+        "summary": "In the project, the refund mismatch changed AI's next action, and a fresh report comparison supported completion. the project ran its verifier on later export work, but its failed result still needed you to relay it before AI responded; connect that existing output to the responsible AI and inspect the next ordinary run.",
+        "expanded": "Superpowers' evidence-before-completion gate supports checking the result after a repair; the project sequence shows that connection in action. Pstack's upkeep guidance supports diagnosing whether a problem is in the harness or product before changing the procedure; the project record establishes a missing delivery step, so repair that connection and confirm that the next relevant output changes AI's action. Neither a saved instruction nor an automatic job alone establishes that the full loop works."
+      }
+    },
+    {
+      "dimension": "testing_evals",
+      "competencies": [
+        {
+          "id": "real_workflow_verification",
+          "title": "User workflow testing",
+          "meaning": "Establish what the affected product actually does by exercising its real user or operator entry point and inspecting the required outcome. Manual verification can fully demonstrate this practice.",
+          "evidence": "Connect the requirement and affected revision to the running environment, actions or inputs, observed results, and the person or delegated evaluator who inspected them. Read interaction records, command output, response bodies, screenshots, saved artifacts, or persisted state as appropriate. Identify the required components and which parts were real, simulated, or unavailable. A launch, passing build, internal-function test, test name, or completion message alone does not establish the user outcome.",
+          "high": "Exercises the affected version through the relevant real entry point in an appropriate test environment and checks the promised outcome, including a relevant side effect when that is part of the requirement. The observation distinguishes success from the failure at issue; a manual run or appropriately delegated run can qualify. Example: for the project's rescheduling change, someone opens an appointment in the running app, changes and saves its time, then reopens it and inspects the stored time. A run that reveals the wrong time is also effective verification of that failure; it does not establish that the feature is fixed.",
+          "medium": "Runs a relevant part of the real workflow and inspects a meaningful result, but leaves an identified required outcome outside the check. Example: the project's edit form accepts a new time and displays a success message, but no check establishes the saved time after reopening, although persistence is required. Describe the confirmed portion and the remaining gap without inferring a product defect.",
+          "low": "Changes are rarely exercised through the real user path; a build, static check, mock, or AI claim stands in for it. Example: a save-and-reopen fix is called verified because compilation passed.",
+          "whyItHelps": "The user reaches a feature through a chain of interactions and connected components. Observing the required end state can reveal a failure that an isolated check or a successful startup cannot distinguish. It also makes the conclusion specific to the path and environment that were actually exercised.",
+          "applicability": "Assess any task that changes code or configuration someone will run or use, whether the change was exercised through its real entry point, checked only by build or unit test, or not checked at all. Use that surface's genuine entry point; a graphical interface is unnecessary for a CLI or library, and a supported sandbox or test mode can be appropriate. If a required external step cannot safely run, keep it unverified rather than demanding an unsafe live transaction. Manual verification can reach High. Unit, integration, static, or mocked checks support a scoped conclusion but not a workflow they never exercise.",
+          "sources": [
+            {
+              "title": "Best Practices — Test user-visible behavior",
+              "url": "https://playwright.dev/docs/best-practices#test-user-visible-behavior",
+              "note": "Recommends checking behavior as an end user sees and interacts with it, rather than implementation details. Supports outcome-focused checks without requiring a particular browser tool or automation for this competency."
+            },
+            {
+              "title": "Create a verification skill",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/create-verification-skill/SKILL.md",
+              "note": "Its Evidence section calls for the real user path, the action and resulting state, and relevant side effects. Its Launch and Doctor sections distinguish a usable connected environment from a merely responding process. These mechanisms support the required connection between a run and its claimed outcome."
+            }
+          ]
+        },
+        {
+          "id": "automatic_verification_gates",
+          "title": "Automated checks",
+          "meaning": "Make relevant checks run through a reusable automatic workflow and let their actual results govern completion claims. Keep the workflow usable as the product changes, and distinguish passed, failed, blocked, and unexecuted checks.",
+          "evidence": "Trace a reusable verification command, CI job, hook, or agent workflow from its actual trigger through check selection, execution on the affected revision, retained results, and the completion decision. Inspect subsequent applicable changes when present to see whether checks run without additional user intervention. Read failure, skip, and blocked states as well as success. Configuration or a standing instruction alone is insufficient; look for execution and evidence that its result controls the reported status. Examine maintenance when a relevant product or harness change exposes drift.",
+          "high": "A working reusable mechanism runs the checks relevant to an observed change without a new task-specific additional user intervention, preserves their results, and permits only the completion scope those results support. A failed or unexecuted required check remains failed or unverified in the gate's outcome. The mechanism uses appropriate checks for the change; every task need not run a full E2E suite. Example: a the project change triggers its existing verification workflow, which runs the affected save-and-reopen check and records the result before completion. A harness failure blocks the verified-complete status; after repair, the workflow executes successfully again. A failure need not be invented when the observed mechanism already works.",
+          "medium": "Relevant checks execute and their results are reported accurately, but repeated execution still depends on task-specific additional user interventions or manual reassembly, or an observed automatic workflow omits an identified required check. Example: the project's save-and-reopen run is thorough each time the person asks for it, but the next applicable change needs the same additional user intervention. The real run can be High in workflow verification while this repeatability practice remains Medium.",
+          "low": "Checks run only when someone remembers, and completion is reported regardless of their state. Example: tests are skipped or broken, yet the work is reported as verified.",
+          "whyItHelps": "A functioning default workflow carries verification into the next relevant change without relying on someone remembering the same request. Connecting its real result to the completion status prevents a skipped check or an old success from being presented as current proof. Maintaining the workflow preserves that connection when the application changes.",
+          "applicability": "Assess any task that changes a project worked on repeatedly, whether checks ran automatically, were requested by hand each time, or did not run. Existing or adapted CI, hooks, scripts, and agent workflows count. High requires observed working automatic execution and result handling; a fully observed check that depends on additional user intervention can establish Medium.",
+          "sources": [
+            {
+              "title": "Verification Before Completion",
+              "url": "https://github.com/obra/superpowers/blob/main/skills/verification-before-completion/SKILL.md",
+              "note": "The gate identifies the command supporting a claim, executes it, reads the actual output and exit status, and reports only the supported status. Supports honest completion gates; the source's instruction alone does not prove that a project has automated or followed the gate."
+            },
+            {
+              "title": "Create a verification skill",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/create-verification-skill/SKILL.md",
+              "note": "Generates a project-specific launch, drive, evidence, and cleanup procedure and requires an actual end-to-end proof before handing it over. Supports a reusable verified procedure rather than treating a newly written skill as a working mechanism."
+            },
+            {
+              "title": "Maintain a verification skill",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/maintain-verification-skill/SKILL.md",
+              "note": "Rechecks the feature map against source and live behavior, distinguishes harness drift from product regressions, and reports clean, changed, or blocked outcomes. Supports maintenance tied to observed behavior; its particular agent arrangement is not a scoring requirement."
+            }
+          ]
+        },
+        {
+          "id": "repeatable_ai_output_evaluation",
+          "title": "AI output evaluation",
+          "meaning": "Use a reusable evaluation system that connects representative inputs, task-specific criteria or scorers, recorded actual outputs, and comparable quality results to adoption and regression decisions for an AI-dependent feature.",
+          "evidence": "Inspect the retained cases and why they represent intended use, the success criteria and grading method, the tested prompt/model/system versions, actual generated outputs, per-case judgments, and the comparison that informed acceptance or revision. Check known failures and relevant ambiguous or negative cases when the work calls for them. Read grader disagreements or suspect passes when they arise. Follow a relevant later change into a rerun when such an opportunity exists. Existing evaluation products, adapted harnesses, and delegated evaluators are valid evidence when they actually execute and retain these connections.",
+          "high": "Runs a repeatable case set suited to the feature's intended use; scores the actual system outputs against clear, relevant criteria; and compares a candidate with the baseline or retained reference under comparable conditions. The recorded decision addresses material regressions as well as improvements. Known failures become retained cases when relevant; output variability or questionable grading is investigated when it could change the decision. Human, code, and model graders can all qualify when fit for the requirement. Example: the project evaluates both answerable policy questions and questions with missing eligibility facts. The same cases run against the old and revised assistant; stored replies and grades distinguish grounded answers from invented eligibility, and an unresolved invention prevents adopting the candidate under the stated rule.",
+          "medium": "Evaluates actual AI outputs with useful criteria but leaves a material part of the repeatable comparison unresolved, such as representative coverage, reliable grading, comparable runs, or disposition of a visible regression. Example: the project stores and scores both versions' replies, but selects the higher total despite a report showing invented eligibility, without establishing whether that regression violates its acceptance rule. A one-off inspected answer can be useful verification without yet establishing this evaluation system.",
+          "low": "AI output quality is judged from impressions, prompt wording, or a single answer rather than compared outputs. Example: a revised assistant is called better because its prompt looks stricter, with no outputs compared.",
+          "whyItHelps": "A stable case set and explicit criteria make quality changes inspectable across versions. Retaining the actual outputs explains a score and helps distinguish a model failure from a grading error. Comparable runs and regression decisions prevent an apparent aggregate improvement from hiding a failure that matters to the feature.",
+          "applicability": "Assess any task that touches a prompt, model call, agent, or other AI-dependent feature of the person's product or workflow, whether quality was evaluated systematically, judged from a single reply, or not judged at all. Using AI to write ordinary software does not create this opportunity. Repeated trials are needed when variability could change the conclusion; a rerun is needed only after a relevant later change.",
+          "sources": [
+            {
+              "title": "Demystifying evals for AI agents",
+              "url": "https://www.anthropic.com/research/demystifying-evals-for-ai-agents",
+              "note": "Defines tasks, trials, graders, and outcomes; recommends balanced real-use cases, stable isolated environments, grading the produced result, inspecting transcripts and grades, and maintaining regression coverage. Supports the connected evaluation system and investigation of grading failures; its illustrative dataset sizes are not rubric thresholds."
+            },
+            {
+              "title": "Evaluation best practices",
+              "url": "https://developers.openai.com/api/docs/guides/evaluation-best-practices",
+              "note": "Connects evaluation objectives, datasets, metrics, executed comparisons, and continuous evaluation. Recommends task-specific cases and calibrating automated scoring with human feedback. Supports comparable quality decisions without requiring OpenAI's evaluation service or adopting its example metric thresholds."
+            }
+          ]
+        }
+      ],
+      "boundaries": [
+        "A detected failure can demonstrate effective verification. A blocked run does not establish the blocked behavior.",
+        "This dimension assesses: The reach and validity of checks, their repeated execution, the evidence allowed to support completion, and evaluation of AI outputs.",
+        "Assessed elsewhere: The next action after a result: Feedback Loops. The person's interpretation of evidence: Human Steering."
+      ],
+      "example": {
+        "notice": "Illustrative output example, not evidence from this assessment.",
+        "summary": "You checked that an appointment stayed saved after closing and reopening the app, and the existing workflow repeated that check before reporting completion. You also compared two AI versions on the same support requests and found a reply that invented an eligibility condition.",
+        "expanded": "Playwright's user-visible-behavior guidance supports checking what the user can actually rely on: the project's save-and-reopen observation establishes persistence. The pstack verification procedures and Superpowers completion gate support a reusable run whose evidence controls the claim, while their installation alone would establish neither. Anthropic and OpenAI's evaluation guidance connects representative cases and grading to recorded comparisons: the project has useful executed evidence, but its unresolved eligibility regression limits the quality decision."
+      }
+    },
+    {
+      "dimension": "human_steering",
+      "competencies": [
+        {
+          "id": "informed_proposal_decisions",
+          "title": "AI proposal review",
+          "meaning": "Examine the facts, alternatives, and consequences relevant to a consequential AI proposal, then use that understanding to accept, modify, or reject it. The person may delegate investigation and comparison to AI; assess how the returned information informs their decision.",
+          "evidence": "Trace the proposal through the information the person actually considered, their decision and its basis, and the work that followed. Useful evidence includes comparisons, concrete examples, inspected outputs, relevant project constraints, and explanations checked against available facts. A requested comparison alone does not establish that its contents informed a choice. Read brief approvals in context: a short acceptance can express a supported decision when the preceding exchange establishes its basis.",
+          "high": "The person examines the information that could materially change the choice, makes a decision supported by that information, and reviews whether the resulting work follows it. Accepting a sound AI proposal meets the same standard as rejecting one. Example: AI proposes removing email verification to reduce signup abandonment. The person asks AI to inspect where abandonment occurs and explain the account-recovery consequences. The findings locate most abandonment before verification. The person retains verification, chooses to simplify the earlier form, and examines the revised signup flow to confirm both parts of that decision.",
+          "medium": "Relevant information informs an identifiable decision, but a consequential implication remains unresolved or the connection to subsequent work is unconfirmed. Example: the person compares two signup approaches and chooses the simpler one for a stated usability reason, but leaves the account-recovery problem raised in the comparison unresolved.",
+          "low": "Consequential proposals are accepted with little examination of their implications. Example: the person says “Pick anything and proceed” to a migration that affects existing customer records.",
+          "whyItHelps": "Separating fact-finding from decision-making lets AI supply information the person does not already know while keeping the choice connected to the person's objectives. Examining the material implications can expose a persuasive proposal that solves the wrong problem or creates an unacceptable consequence. A supported acceptance also lets suitable work proceed without unnecessary intervention.",
+          "applicability": "Assess any task in which AI proposed or chose an approach, design, library, data change, or scope with consequences beyond the immediate edit, whether the person examined it, waved it through, or did not respond. Routine execution within an established decision needs no further comparison or approval, and multiple alternatives are unnecessary when the evidence already supports one suitable approach.",
+          "sources": [
+            {
+              "title": "Matt Pocock skills — Grilling",
+              "url": "https://github.com/mattpocock/skills/blob/main/skills/productivity/grilling/SKILL.md",
+              "note": "Separates facts the agent should investigate from decisions presented to the person, and uses successive answers to resolve dependent choices. Adopted mechanism: delegate discoverable facts while connecting consequential choices to the person's considered answers. The skill's interview format and confirmation procedure are not scoring requirements."
+            },
+            {
+              "title": "Microsoft HAX Toolkit — Guideline 11: Make clear why the system did what it did",
+              "url": "https://www.microsoft.com/en-us/haxtoolkit/guideline/make-clear-why-the-system-did-what-it-did/",
+              "note": "Recommends accessible explanations while warning that an explanation's presence can increase trust and overreliance even when AI is wrong. Adopted mechanism: examine whether the available explanation and evidence support the choice rather than treating receipt of an explanation as informed judgment. This is interaction-design guidance, not validation of the behavioral levels."
+            }
+          ]
+        },
+        {
+          "id": "evidence_based_redirection",
+          "title": "AI work correction",
+          "meaning": "When AI work departs from the intended result, follows an unsupported explanation, or expands beyond a justified scope, identify the mismatch, communicate an actionable correction, and judge whether the subsequent work addresses it.",
+          "evidence": "Follow the disputed proposal or observed result through the evidence the person considered, their correction, AI's response, and the person's judgment of the returned work. Inspect relevant outputs, screen states, diffs, reproductions, or explanations of competing causes. Determine what the correction changes and what it preserves. The person may ask AI to investigate the cause rather than identify the implementation themselves.",
+          "high": "The person connects the correction to the observed problem, gives a usable change of direction or scope, and examines subsequent evidence to judge whether the original need and correction were addressed. Example: asked to export copies, AI starts moving the source files. The person explains that the goal is delivery rather than relocation, directs AI to preserve the originals and create separate exports, and inspects both the exported files and the retained originals before accepting the result.",
+          "medium": "The person identifies a concrete mismatch and gives a correction AI can apply, but the evidence supporting the chosen direction or the person's judgment of its effect remains incomplete. Example: \"Exporting removes the originals. Preserve them and create copies instead.\" This is an actionable correction, but the subsequent record does not show the person inspecting whether the originals remain.",
+          "low": "Corrections are vague or miss the demonstrated problem. Example: the person says only “Try again” or “Do it properly” after an export moved the original files, without saying what must change.",
+          "whyItHelps": "An unexplained retry can preserve the same mistaken assumption. A correction tied to evidence changes what AI investigates or implements, while explicit preservation conditions protect the parts that should remain. Reviewing the returned result distinguishes a resolved problem from an appealing explanation or an unrelated improvement.",
+          "applicability": "Assess any task where AI's work drifted from what was asked, rested on an unverified explanation, or exceeded the asked scope, whether the person corrected it precisely, said only \"try again\", or accepted it as is. Correct autonomous work need not be interrupted. A redirection may begin with further investigation rather than a prescribed fix.",
+          "sources": [
+            {
+              "title": "pstack — Poteto mode: Bug fix playbook",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/poteto-mode/playbooks/bug-fix.md",
+              "note": "Requires runtime evidence to discriminate causes, removal of changes motivated by refuted hypotheses, and verification on the original surface. Adopted mechanism: reject an unsupported direction for an evidenced reason, constrain the replacement to the demonstrated problem, and examine the original outcome afterward. The playbook addresses agent execution; its delegation and commit procedures are not requirements for human steering."
+            },
+            {
+              "title": "Microsoft HAX Toolkit — Guideline 9: Support efficient correction",
+              "url": "https://www.microsoft.com/en-us/haxtoolkit/guideline/support-efficient-correction/",
+              "note": "Recommends letting people edit, refine, or recover from incorrect AI output, including adjusting part of a proposed route using local knowledge. Adopted mechanism: a focused correction can preserve useful work while addressing the specific mismatch. The guideline supports correction as an interaction mechanism rather than prescribing these assessment levels."
+            }
+          ]
+        },
+        {
+          "id": "evidence_based_reconsideration",
+          "title": "Assumption checks",
+          "meaning": "Reconsider an earlier instruction, assumption, or choice when new findings challenge its basis. Use the evidence to revise or deliberately retain the decision, then examine the resulting work.",
+          "evidence": "Identify the person's earlier position, the finding that challenges it, their interpretation of that finding, the decision they revise or retain, and the subsequent result. Distinguish reconsideration of an existing assumption from an ordinary new preference or added requirement. AI disagreement alone is insufficient; inspect the supporting evidence and how the person uses it.",
+          "high": "The person examines what the new evidence changes about their earlier reasoning, revises or retains the decision for a supported reason, and reviews the resulting work. Example: the person requests more help articles to reduce support inquiries. User observations then show that the needed explanations already exist but are difficult to find. The person revises the assumption that more content is needed, directs AI to expose the existing explanation at the relevant step, and examines whether the revised flow lets people find it and complete the task. Retaining an earlier choice also qualifies when the person addresses the contrary finding and the evidence supports that choice.",
+          "medium": "The person recognizes the conflict and makes a relevant revision or retention decision, but part of its reasoning or subsequent effect remains unconfirmed. Example: after reviewing the discoverability finding, the person replaces the article-writing request with an in-context help link, but no later observation establishes how the revised flow works.",
+          "low": "Earlier instructions are kept or changed without engaging the evidence that challenges them. Example: findings show readers cannot find existing articles, but the person asks for more articles without addressing that.",
+          "whyItHelps": "Correct execution cannot compensate for a mistaken premise in the instruction itself. Testing the premise behind an earlier decision can prevent further work on an explanation the evidence no longer supports. Deliberate retention is equally useful when examination shows that the original decision remains appropriate; changing one's mind is not the objective.",
+          "applicability": "Assess any task in which investigation, output, or results contradicted something the person had assumed or instructed earlier, whether the person reconsidered, pushed on regardless, or did not notice. A reversal is not required; a supported decision to keep the original direction can demonstrate the same practice.",
+          "sources": [
+            {
+              "title": "pstack — Attack the Premise",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/principle-attack-the-premise/SKILL.md",
+              "note": "Calls for stating and directly testing a premise when fixes that share it fail, then following evidence that confirms or contradicts it. Adopted mechanism: examine the assumption behind a direction before continuing to invest in it. This rubric extends that mechanism to the person's own instructions and choices; the source's repeated-failure trigger is not adopted as a prerequisite."
+            }
+          ]
+        }
+      ],
+      "boundaries": [
+        "Choosing among proposals, correcting AI's approach, and reconsidering one's own earlier position are separate decisions. One episode supports more than one competency only when it contains a distinct decision and evidence for each.",
+        "This dimension assesses: The person's decisions about AI proposals, corrections of AI's approach, and reconsideration of their own earlier instructions.",
+        "Assessed elsewhere: The initial intended outcome: Planning & Specs. AI-controlled recovery or completion: Feedback Loops. An approval alone, including a security approval, is not steering."
+      ],
+      "example": {
+        "notice": "Illustrative output example, not evidence from this assessment.",
+        "summary": "In the project, you explained why moving the source files did not meet the export request and directed AI to preserve the originals. You then inspected the exported copies and retained originals before accepting the result.",
+        "expanded": "The pstack bug-fix playbook connects a changed direction to observed evidence and checks the original outcome after repair; Microsoft HAX Guideline 9 supports focused correction using the person's local knowledge. Here, the mismatch informed an actionable correction and the person's later inspection supported acceptance. This demonstrates redirection; proposal decisions and reconsideration of an earlier personal assumption require their own identifiable decisions."
+      }
+    },
+    {
+      "dimension": "security",
+      "competencies": [
+        {
+          "id": "authorization_boundaries",
+          "title": "Access control",
+          "meaning": "Match an AI task's access to its authorized actors, resources, and operations, then enforce that boundary where an action takes effect. This includes the working agent's access and protected operations it changes in a product, when each is relevant.",
+          "evidence": "Connect the task's authorization to the identity, resource, operation, and effective control used during execution. Inspect credential scopes, service authorization, sandbox or approval decisions, relevant code paths, and actual allow/deny results. A written rule, an installed tool, or an uneventful run alone does not demonstrate enforcement; a product sandbox does not establish restrictions on the working agent.",
+          "high": "The needed operation succeeds and a relevant unauthorized operation is demonstrably denied at the applicable enforcement point. Discovered gaps are fixed and the affected checks rerun. Example: the project's reporting agent reads fixture invoices with its scoped identity, while an attempted fixture deletion is denied; a changed invoice endpoint also permits its owner and denies another account. Existing controls earn credit when their application and result are observed.",
+          "medium": "A specific suitable control is applied to the actual operation, but its relevant allow/deny behavior is not fully established. Example: the project runs the report with a verified read-only database role and retrieves the requested data, but has not checked the role against a safe write attempt. A promise to ask before changes is insufficient without an applied approval or access mechanism.",
+          "low": "Agent access and protected operations are broader than the task needs, or a needed authorization check is missing. Example: write and delete access stay open for read-only work, or a changed endpoint returns another account's data.",
+          "whyItHelps": "Enforcement ties authority to a concrete operation even if an agent makes a mistake. Checking both permitted and denied cases distinguishes a useful restriction from one that either grants too much or prevents legitimate work.",
+          "applicability": "Assess any task in which AI ran with write, delete, network, credential, or production-affecting capability, or edited code that decides who may do what, whether the boundary was enforced, merely promised, or left open. Assess only boundaries relevant to that task; safe fixtures can demonstrate prevention without an incident.",
+          "sources": [
+            {
+              "title": "OWASP Authorization Cheat Sheet",
+              "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html",
+              "note": "Maps actors, resources, and operations to least privilege; recommends permission checks on each protected request and tests of their enforcement. Supports the task-specific access boundary and allowed/denied comparison."
+            },
+            {
+              "title": "Anthropic: Beyond permission prompts: making Claude Code more secure and autonomous",
+              "url": "https://www.anthropic.com/engineering/claude-code-sandboxing",
+              "note": "Describes filesystem and network isolation enforced outside model judgment, including subprocesses. Supports inspecting effective agent restrictions while preserving ordinary work; no particular sandbox product or published performance claim is required."
+            },
+            {
+              "title": "pstack: Prove It Works (skills/principle-prove-it-works/SKILL.md)",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/principle-prove-it-works/SKILL.md",
+              "note": "Requires checking the actual artifact or behavior rather than a proxy or self-report. Adopted only as an evidence principle for observed control outcomes, not as a security guarantee."
+            }
+          ]
+        },
+        {
+          "id": "sensitive_information_boundaries",
+          "title": "Sensitive data protection",
+          "meaning": "Limit secrets and sensitive information to the data, recipients, destinations, and retention the task permits. Apply protection to the relevant path through tools, model context, outputs, logs, and saved artifacts rather than relying on a general warning.",
+          "evidence": "Trace what information was needed, its permitted use, and where it actually traveled or was stored. Read scoped retrieval, secret injection, field filtering or redaction, outbound restrictions, relevant diffs and logs, and safe disclosure checks. Distinguish a real value exposed to an unauthorized destination from a synthetic test value, and inspect containment or credential revocation when an exposure occurred.",
+          "high": "The required task completes with the permitted data, while a safe check shows a relevant prohibited disclosure is blocked, removed, or kept inaccessible at the boundary. Any observed exposure is contained and the affected path checked again. Example: the project's support summary retains the issue details it needs, but seeded private identifiers are removed before the external model request; the recorded request verifies both results without using real personal data.",
+          "medium": "A specific suitable protection operates on the actual data path, but disclosure verification is incomplete. Example: the project's export passes through an applied field allowlist before the AI receives it, but no seeded private-field case has been checked at that outbound boundary. An unused secret scanner or an instruction saying not to leak data is insufficient.",
+          "low": "Secrets and private data move with little control over where they go. Example: keys sit in source files or chat, or private fields go to an external model without filtering.",
+          "whyItHelps": "Reducing the sensitive information available to a process and controlling its destinations reduces opportunities for accidental disclosure. Checking the actual outbound or saved artifact catches leaks that a clean final message can conceal.",
+          "applicability": "Assess any task where secrets, credentials, personal or customer data, or confidential material were present in the files, environment, tool output, or conversation, or where the work builds a path that will carry such data, whether or not they were protected. Use synthetic markers for checks and never require disclosure of real secrets. An approved connector or secret store counts when the observed path preserves the boundary.",
+          "sources": [
+            {
+              "title": "OWASP Secrets Management Cheat Sheet",
+              "url": "https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html",
+              "note": "Recommends fine-grained secret access, minimizing direct handling, lifecycle controls, and revocation of potentially compromised secrets. Supports protecting the necessary credential path and addressing confirmed exposure."
+            },
+            {
+              "title": "OWASP LLM02:2025 Sensitive Information Disclosure",
+              "url": "https://genai.owasp.org/llmrisk/llm022025-sensitive-information-disclosure/",
+              "note": "Identifies confidential information and credentials as disclosure risks and describes restricted data access, sanitization, and redaction. Notes that prompt restrictions may be bypassed; supports checking the data path rather than trusting instructions alone."
+            },
+            {
+              "title": "Addy Osmani agent-skills: Security and Hardening (skills/security-and-hardening/SKILL.md)",
+              "url": "https://github.com/addyosmani/agent-skills/blob/main/skills/security-and-hardening/SKILL.md",
+              "note": "Specifies secret handling outside source, removal of sensitive response fields, and keeping secrets or other tenants' data out of LLM context. Adopted for concrete handling paths, without importing its entire audit checklist."
+            }
+          ]
+        },
+        {
+          "id": "untrusted_external_input",
+          "title": "External input safety",
+          "meaning": "Treat fetched pages, documents, messages, tool responses, third-party skills, and model output according to who controls them. Keep their content from becoming unauthorized instructions, executable code, or unchecked tool parameters when it crosses a trust boundary.",
+          "evidence": "Follow an external input from its entry channel to the action or output it can influence. Inspect separation of instructions from source data, boundary parsing and validation, safe rendering or command construction, permission checks on tool calls, and observed results with benign and adversarial fixtures. A refusal in the answer is insufficient if a tool already performed the forbidden action.",
+          "high": "The intended external-content task succeeds, and a relevant malicious or malformed fixture fails to cross the protected boundary. The check uses the same input channel and observes the tool call, destination, or state at risk; discovered gaps are repaired and checked again. Example: the project summarizes a retrieved page normally, while an embedded instruction to send a dummy private record to a test destination produces no outbound call because the tool policy denies that destination.",
+          "medium": "A specific defense is applied to the actual boundary, but its relevant adversarial behavior remains unverified. Example: the project parses an imported action into an allowlisted schema and checks the target against session permissions, but has tested only a normal import. A prompt to ignore malicious instructions, with no observed handling or downstream control, does not establish this level.",
+          "low": "External content is used with little separation from instructions or safe handling. Example: text from a fetched page or document is followed as an instruction, or reaches a shell command unchecked.",
+          "whyItHelps": "Separating data from authority prevents an outside author from acquiring the user's permissions merely by supplying content. Validation and downstream action controls address different failure paths; observing the actual protected effect avoids confusing a polite refusal with prevention.",
+          "applicability": "Assess any task in which AI read or acted on content someone else controls (fetched pages, documents, emails, issues, third-party skills or packages, or another model's output), whether that content was handled with separation or simply followed. A passing fixture establishes only that tested protection, not universal prompt-injection resistance. Existing parsers, tool policies, and framework escaping count when used and observed.",
+          "sources": [
+            {
+              "title": "OWASP LLM01:2025 Prompt Injection",
+              "url": "https://genai.owasp.org/llmrisk/llm01-prompt-injection/",
+              "note": "Explains indirect injection through external sources and recommends separating external content, validating outputs, and restricting privileges in code. Supports distinguishing supplied content from authority."
+            },
+            {
+              "title": "OWASP LLM Prompt Injection Prevention Cheat Sheet",
+              "url": "https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html",
+              "note": "Recommends validating tool parameters against permissions and session context. Its smoke-testing section uses dummy data, the actual external channel, observable tool or disclosure outcomes, and legitimate controls; it explicitly limits what passing cases prove."
+            },
+            {
+              "title": "pstack: Boundary Discipline (skills/principle-boundary-discipline/SKILL.md)",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/principle-boundary-discipline/SKILL.md",
+              "note": "Places parsing, validation, and defensive error handling at external boundaries. Adopted as a supporting implementation mechanism; parsed or typed data still requires authorization and safe use."
+            },
+            {
+              "title": "Addy Osmani agent-skills: Security and Hardening (skills/security-and-hardening/SKILL.md)",
+              "url": "https://github.com/addyosmani/agent-skills/blob/main/skills/security-and-hardening/SKILL.md",
+              "note": "Treats model output and externally written values as untrusted, requires safe query/command/output handling, and distinguishes valid shape from authorized use. Supports tracing the input to its dangerous sink."
+            }
+          ]
+        }
+      ],
+      "boundaries": [
+        "No repository-wide audit, every scanner, or fixed control count is required. A clean scan, successful build, or saved configuration does not substitute for connected evidence, and no separate permission-bypass deduction applies.",
+        "This dimension assesses: Whether protections relevant to the observed AI task permit the intended case and prevent the prohibited case.",
+        "Assessed elsewhere: General workflow verification: Testing & Evals."
+      ],
+      "example": {
+        "notice": "Illustrative output example, not evidence from this assessment.",
+        "summary": "In the project's invoice report, your scoped agent completed the permitted query and a safe deletion attempt was denied. In the project's importer, the schema and session checks were applied, but the record does not yet show an embedded instruction being stopped at the outbound tool boundary.",
+        "expanded": "OWASP's authorization guidance links actors and operations to enforced permissions, so the project's observed query and denial support High for that task's authorization boundary. OWASP's injection guidance requires observing the protected action through the relevant external channel; the project's applied controls support Medium while that verification is incomplete. These observations say nothing about unobserved sensitive-information paths or the projects' overall security."
+      }
+    },
+    {
+      "dimension": "efficiency_cost",
+      "competencies": [
+        {
+          "id": "task_fit_model_and_effort",
+          "title": "Model and effort selection",
+          "meaning": "Choose and actually use a model and reasoning effort suited to the work's difficulty, required quality, urgency, and likely correction burden. Assess the main run and delegated work when delegation occurs.",
+          "evidence": "Connect the task's acceptance conditions to the person's choice, an adopted AI proposal, or an applied standing rule; then inspect resolved execution settings, delivered behavior, verification, and repairs. Look for both model capability and reasoning effort where the platform allows them to be selected or observed. A requested setting is not proof of the setting that ran. Defaults can be deliberate choices when the records show why they fit. Do not require the person to research facts or choose every subagent manually when an authorized AI can do that work.",
+          "high": "A task-specific choice of model and effort governs the actual execution, and observed completion checks establish that the assignment delivered the required result. The choice accounts for difficulty and correction risk rather than price or model reputation alone. Example: for a bounded internal rename, an adopted rule selects the ordinary coding model at medium effort; the resolved run uses that assignment and passes the reference checks. An interacting authorization change receives a more capable model or higher effort because its cases cross several rules, and the executed checks cover those cases. One model can fit both tasks if the evidence supports that choice.",
+          "medium": "Makes and applies a concrete resource choice but handles a relevant part of task fit incompletely. Example: an import repair runs on the selected lower-cost model, but the recorded selection considers only request price even though the known requirement includes ambiguous mappings and previous correction work. Or execution reports a fallback model, yet the task review still attributes the result to the requested model without resolving the difference. This is an observed partial practice, not a rating for absent metadata.",
+          "low": "Model and effort are rarely matched to the task. Example: the strongest model at maximum effort handles file lookups and short summaries, or the same weak setting keeps failing the same cases.",
+          "whyItHelps": "Capability and reasoning effort affect what a run can resolve, how long it takes, and how much correction follows. Matching both to the actual task can avoid unnecessary work while preserving the result the person needs. Confirming what ran prevents a setting request from becoming a false explanation of the outcome.",
+          "applicability": "Assess every task AI performed, including small one-off tasks, whether the model and effort were chosen deliberately or left at default. If effort is unavailable or not exposed, state that limit without inventing hidden settings or treating missing telemetry as a failure.",
+          "sources": [
+            {
+              "title": "OpenAI API — Reasoning models, Reasoning effort",
+              "url": "https://developers.openai.com/api/docs/guides/reasoning#reasoning-effort",
+              "note": "Explains the effort control and its quality, latency, and token tradeoffs; supported settings depend on the model. This supports assessing effort alongside model choice rather than using a model name as the entire assignment. It does not establish a suitable effort for an unobserved task."
+            },
+            {
+              "title": "pstack — skills/poteto-mode/SKILL.md, Subagents",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/poteto-mode/SKILL.md",
+              "note": "The public procedure starts from per-role settings, adjusts reasoning effort for task difficulty, and distinguishes difficult changes from mechanical edits. Adopt the task-based selection mechanism, not its named model defaults or a requirement to use subagents."
+            }
+          ]
+        },
+        {
+          "id": "quality_and_total_completion_burden",
+          "title": "Quality and total effort",
+          "meaning": "Judge resource use against the accepted result and everything needed to reach it: execution, verification, failed attempts, retries, coordination, and human review or repair. Use that evidence to decide whether the approach is worth retaining or changing.",
+          "evidence": "Read the required result, actual outputs and checks, attempt history, usage by the main run and any delegates, available timing, and records of human checking or correction. Connect the accounting scope to the conclusion. Distinguish observed elapsed time from active work time, API price estimates from actual charges, and subscription allowance from monetary spend. When alternatives are compared, require comparable task scope, inputs, and completion checks, and include unsuccessful attempts rather than only the best run.",
+          "high": "Reviews achieved quality with the whole observable completion burden, identifies unavailable quantities explicitly, and uses the result to justify retaining or changing the approach. Example: a report for the project includes a failed mapping attempt, the repair, delegated inspection, final checks, and the person's review work. It shows that the apparent saving on the first request was offset by repair and retains the route that meets the mapping cases with the better supported overall tradeoff. If billing or active work time is unavailable, the report identifies those quantities as unavailable and makes its conclusion only from the supported usage, timing, and correction evidence. A well-supported decision to retain an effective existing assignment also qualifies.",
+          "medium": "Connects a real result to real resource evidence but omits or mislabels a known contributor, so the conclusion covers only part of the work. Example: a comparison includes passing output and final-call usage but leaves recorded retries and human repair outside the total. Or it labels an API-price estimate as the subscription charge. The observed accounting is useful but does not yet support its stated whole-task conclusion.",
+          "low": "Resource use is seldom reviewed against the result, or an approach is called efficient while its repairs are ignored. Example: the cheaper run is adopted although it failed the required cases.",
+          "whyItHelps": "A request uses resources even when its output is discarded. Counting the work needed for an acceptable completion makes retries, handoffs, and human repair visible instead of rewarding an inexpensive unsuccessful attempt. Comparable completion conditions make a resource difference interpretable.",
+          "applicability": "Assess any completed task whose outcome and effort are visible in the records (attempts, retries, corrections, delegated runs), whether or not the person weighed that cost against the result. Do not demand new benchmark runs, invent human review minutes from message gaps, or convert session wall time into active labor.",
+          "sources": [
+            {
+              "title": "Efficient Agents: Building Effective Agents While Reducing Cost — Section 2.2 Metrics",
+              "url": "https://arxiv.org/html/2508.02694v1#S2.SS2",
+              "note": "Separates input and output costs and uses cost-of-pass to relate cost to successful completion. Adopt the comparison principle that cost and success must be read together; the rubric additionally considers observed time and human repair. The paper's benchmark figures do not predict savings for a person's projects."
+            },
+            {
+              "title": "Anthropic — Building effective agents, When (and when not) to use agents",
+              "url": "https://www.anthropic.com/research/building-effective-agents",
+              "note": "Recommends starting with a simple solution and considering whether added agent complexity earns its latency and cost through better task performance. This supports evaluating orchestration overhead against the required result, without rewarding or penalizing an agent count by itself."
+            }
+          ]
+        },
+        {
+          "id": "maintained_automatic_resource_routing",
+          "title": "Automatic model selection",
+          "meaning": "Turn useful quality-and-resource findings into maintained selection rules that the AI or harness applies to new tasks. The person's own standing rule can classify task size or difficulty and select model, effort, or justified delegation; a separate router product is not required.",
+          "evidence": "Trace a reviewed result to a retained or revised assignment rule, then to a later relevant task that consumes it and the resolved settings that actually run. Inspect how the rule reaches the execution path: automatically loaded instructions that the AI applies, a reusable workflow, per-role configuration, or a router. Check the later result and resource burden against the reason for the rule. Distinguish an automatically applied standing policy from a file that is never read, a requested route that resolves differently, or the person repeating a model instruction on each task.",
+          "high": "A maintained rule grounded in reviewed outcomes automatically governs a later applicable assignment without the person restating the routine selection, and the later result supports retaining or revising it. Example: a standing workflow classifies isolated edits separately from changes with interacting access rules, chooses the model and effort for that class, and verifies the resolved assignment. A later access-rule repair receives the intended route without additional user intervention; its checks and total attempt burden are reviewed. If those results show a changed requirement or recurring mismatch, the rule is revised and the next applicable execution follows it. Deliberately keeping a successful route qualifies. Genuine preference or risk decisions can still require human approval.",
+          "medium": "Uses an evidence-based reusable selection criterion, but the observed execution still needs a human additional user intervention for routine routing or leaves a known gap between the rule and its purpose. Example: the person has a useful task-size rule yet must repeat the appropriate model and effort on each comparable task. Or the later run automatically selects the intended settings but the recorded review considers only price despite the rule having been introduced to reduce correction work.",
+          "low": "Model choices are made ad hoc each time, or known routing problems stay in place. Example: the person picks models per task with no standing rule, or a default known to cause rework stays unchanged.",
+          "whyItHelps": "An applied standing rule carries a useful decision into the next task and removes repeated routine selection from the person. Connecting the rule to resolved settings exposes configuration drift. Reviewing later outcomes keeps the rule tied to its purpose as tasks and available models change.",
+          "applicability": "Assess any task of a kind the person does repeatedly (the same size or type of work across sessions), whether a standing rule chose the model and effort, the person picked each time, or the default was always used. An actual assignment governed by a reusable rule can establish Medium. High requires automatic application through a workflow, harness behavior, or instructions AI follows; a commercial router or multiple models are not required.",
+          "sources": [
+            {
+              "title": "pstack — skills/setup-pstack/SKILL.md",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/setup-pstack/SKILL.md",
+              "note": "Writes persistent per-role model and budget settings, validates available model identifiers, and explains how later skills consume the settings in each harness. This supplies a concrete reusable-policy mechanism; the rubric still requires observed later execution rather than credit for the settings file alone."
+            },
+            {
+              "title": "pstack — skills/poteto-mode/SKILL.md, Match the model to the job",
+              "url": "https://github.com/cursor/plugins/blob/main/pstack/skills/poteto-mode/SKILL.md",
+              "note": "Applies saved role settings at dispatch and adjusts effort to the job. This supports automatic task-based selection under a person's standing policy. Its specific defaults are examples, not universal efficiency targets."
+            },
+            {
+              "title": "Anthropic — Building effective agents, Workflow: Routing",
+              "url": "https://www.anthropic.com/research/building-effective-agents",
+              "note": "Describes classifying inputs and directing them to appropriate paths, including model choices for distinct task classes. This supports routing by observed task needs, without requiring multiple models when one route fits the work."
+            }
+          ]
+        }
+      ],
+      "boundaries": [
+        "Keep token categories, monetary charges, API estimates, subscription usage, elapsed time, active work, and human review distinct. Report unavailable quantities and make no unsupported savings or labor claims.",
+        "This dimension assesses: The model, reasoning effort, resource burden, and routing rules used to execute the work.",
+        "Assessed elsewhere: Work units and handoffs: Task Mapping. Quality conditions: Testing & Evals. How results guide retries: Feedback Loops."
+      ],
+      "example": {
+        "notice": "Illustrative output example, not evidence from this assessment.",
+        "summary": "In the project, you compared accepted mapping behavior with the failed attempt, repair, and review before retaining the more suitable route. Your standing task-size rule then selected the intended model and effort for a later import change without another model-selection additional user intervention, and the follow-up review checked that the reason for the rule still held.",
+        "expanded": "The public routing sources supply two mechanisms: a persistent assignment map and a workflow that applies it to the incoming task. The illustrative observation connects those mechanisms to an actual later assignment and its result, so it supports reusable routing rather than merely proving that a policy file exists. The whole-task review also follows the cost-and-success comparison principle, while identifying monetary spend as unavailable when billing is unavailable."
+      }
+    }
+  ]
+}

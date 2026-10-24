@@ -26,7 +26,10 @@ case "scan":
 case "pack":
     let dir = URL(fileURLWithPath: value("--out") ?? "vibemetric-evidence")
     let scan = Scanner.scan(sources: sources, cache: cache)
-    try EvidencePack.write(scan, to: dir, contextFiles: RuleFiles.snapshot(scan: scan))
+    // The digests fit the chosen engine's share of the context, as a score would read them.
+    let engine = AssessmentEngine(rawValue: value("--engine") ?? "claude") ?? .claude
+    try EvidencePack.write(scan, to: dir, contextFiles: RuleFiles.snapshot(scan: scan),
+                           digestTokenBudget: AssessmentOptions(engine: engine, model: value("--model")).digestTokenBudget)
     // The same extra inputs the app adds to every assessment.
     try EvidencePack.writeSupplementary(scan, to: dir, inputs: ["usage", "model_settings"])
     print("Wrote evidence pack for \(scan.sessions.count) sessions to \(dir.path)")
@@ -49,10 +52,11 @@ case "assess":
     // The CLI keeps no snapshots, so rule changes fall back to files modified since the previous card.
     let rules = RuleFiles.snapshot(scan: scan)
     let ruleChanges = previous.map { RuleFiles.changesReport(current: rules, previous: nil, since: $0.date) }
-    try EvidencePack.write(scan, to: dir, previous: previous, ruleChanges: ruleChanges, contextFiles: rules)
-    FileHandle.standardError.write(Data("Evidence pack: \(dir.path) (\(scan.sessions.count) sessions). Running \(engine.name)…\n".utf8))
     var options = AssessmentOptions(engine: engine, model: value("--model"))
     options.timeout = AssessmentOptions.scoreTimeLimit
+    try EvidencePack.write(scan, to: dir, previous: previous, ruleChanges: ruleChanges, contextFiles: rules,
+                           digestTokenBudget: options.digestTokenBudget)
+    FileHandle.standardError.write(Data("Evidence pack: \(dir.path) (\(scan.sessions.count) sessions, \(Assessor.digestCount(dir)) digests). Running \(engine.name)…\n".utf8))
     let outcome = try await Assessor().run(packDir: dir, sources: scan.sources, options: options,
                                            previousDate: previous?.date) { event in
         switch event {
@@ -75,7 +79,7 @@ default:
 
       scan [--home DIR] [--cache FILE]
                            Parse local transcripts and print counts
-      pack [--out DIR] [--home DIR] [--cache FILE]
+      pack [--out DIR] [--engine claude|codex] [--model M] [--home DIR] [--cache FILE]
                            Write the redacted evidence pack the assessor reads
       assess [--engine claude|codex] [--model M] [--out DIR] [--previous card.json]
                            Build the pack, run the selected local CLI, and print the card

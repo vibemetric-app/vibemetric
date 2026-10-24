@@ -57,7 +57,7 @@ public enum Dimension: String, Codable, CaseIterable, Sendable, Identifiable {
         case .taskMapping: "Is big work split into the right pieces?"
         case .feedbackLoops: "Do results decide the next step?"
         case .testingEvals: "Do you check the AI's work?"
-        case .humanSteering: "Do you review and redirect the AI with clear reasons?"
+        case .humanSteering: "Do you make informed decisions, redirect AI, and reconsider your own assumptions?"
         case .security: "Is the agent limited to what each task needs?"
         case .efficiencyCost: "Do the model and effort match each task?"
         }
@@ -132,6 +132,10 @@ public struct ScoreCard: Codable, Sendable {
         /// The solution explained as 2–4 plain bullets: what to change, where, how to do it in the next task,
         /// and how to tell it worked. nil on older cards, which show `tryThis` alone.
         public var solutionSteps: [String]?
+        /// Direct Planning competency ratings and the criteria used for the assessment.
+        public var planning: PlanningAssessment?
+        /// Direct competency ratings for the other dimensions, including the canonical guide snapshot.
+        public var assessment: BehavioralAssessment?
         /// The problem and its fix in one short line each, for the result's first screen. nil on older cards, which
         /// show the headline and `tryThis` there instead.
         public var issueLine: String?
@@ -179,7 +183,7 @@ public struct ScoreCard: Codable, Sendable {
 
         enum CodingKeys: String, CodingKey {
             case dimension, score, status, headline, reason, points, conclusion, evidence, changeReason, saw, strengths, impact, tryThis, solutionSteps,
-                 issueLine, fixLine
+                 planning, assessment, issueLine, fixLine
         }
 
         public init(from decoder: Decoder) throws {
@@ -197,6 +201,8 @@ public struct ScoreCard: Codable, Sendable {
             impact = try c.decodeIfPresent(String.self, forKey: .impact)
             tryThis = try c.decodeIfPresent(String.self, forKey: .tryThis)
             solutionSteps = try c.decodeIfPresent([String].self, forKey: .solutionSteps)
+            planning = try c.decodeIfPresent(PlanningAssessment.self, forKey: .planning)
+            assessment = try c.decodeIfPresent(BehavioralAssessment.self, forKey: .assessment)
             issueLine = try c.decodeIfPresent(String.self, forKey: .issueLine)
             fixLine = try c.decodeIfPresent(String.self, forKey: .fixLine)
             reason = try c.decodeIfPresent(String.self, forKey: .reason)
@@ -332,6 +338,22 @@ public struct ScoreCard: Codable, Sendable {
     }
 
     public struct Scope: Codable, Sendable {
+        public struct UnknownInvestigation: Codable, Sendable {
+            public enum Status: String, Codable, Sendable { case notFound = "not_found", unavailable, incomplete }
+            public var dimension: Dimension
+            public var competencyID: String
+            public var status: Status
+            public var searches: [String]
+            public var remainingLeads: [String]
+
+            public init(dimension: Dimension, competencyID: String, status: Status, searches: [String], remainingLeads: [String]) {
+                self.dimension = dimension
+                self.competencyID = competencyID
+                self.status = status
+                self.searches = searches
+                self.remainingLeads = remainingLeads
+            }
+        }
         public struct ToolRange: Codable, Sendable {
             public var tool: String
             public var from: String
@@ -345,6 +367,7 @@ public struct ScoreCard: Codable, Sendable {
         public var tasksCheckedInDetail: Int
         public var elapsedMinutes: Double
         public var limits: [String]
+        public var unknownInvestigations: [UnknownInvestigation]?
     }
 
     public var language: String
@@ -352,7 +375,7 @@ public struct ScoreCard: Codable, Sendable {
     /// The summary at the top of the card: 2–3 plain-language bullets. nil on cards scored before it existed;
     /// those show `diagnosis` instead.
     public var summary: [String]?
-    /// What the person does well, as 2–4 one-liners for the result's first screen. nil on cards scored before it
+    /// What the person does well, as up to four one-liners for the result's first screen. nil on cards scored before it
     /// existed; the app then uses the best categories' headlines.
     public var highlights: [String]?
     public var dimensions: [DimensionResult]
@@ -377,6 +400,113 @@ public struct ScoreCard: Codable, Sendable {
 
     /// The sum of the scored dimensions, before deductions.
     public var dimensionSum: Int { ordered.compactMap(\.score).reduce(0, +) }
+
+    public enum ScoringError: Error {
+        case invalidAssessments
+    }
+
+    /// Keep project-relative detail while hiding personal home-directory prefixes in all report text.
+    /// Reference URLs remain exact. This also covers older saved cards and exported Markdown.
+    public func hidingUserPaths() throws -> Self {
+        let pattern = try NSRegularExpression(pattern: #"/(?:Users|home)/[^/\s]+/"#)
+        func hide(_ value: Any) -> Any {
+            if let text = value as? String {
+                if text.hasPrefix("https://") || text.hasPrefix("http://") { return text }
+                return pattern.stringByReplacingMatches(in: text, range: NSRange(text.startIndex..., in: text), withTemplate: "")
+            }
+            if let array = value as? [Any] { return array.map(hide) }
+            if let object = value as? [String: Any] { return object.mapValues(hide) }
+            return value
+        }
+        let encoded = try JSONEncoder().encode(self)
+        let object = try JSONSerialization.jsonObject(with: encoded)
+        return try JSONDecoder().decode(Self.self, from: JSONSerialization.data(withJSONObject: hide(object)))
+    }
+
+    /// Only called for new assessments. Loading an older result preserves its original scoring policy.
+    /// Puts each given dimension in place of the card's own (all copies of it), or adds it when the card had none.
+    public mutating func replaceDimensions(_ replacements: [DimensionResult]) {
+        for replacement in replacements {
+            let position = dimensions.firstIndex { $0.dimension == replacement.dimension }
+            dimensions.removeAll { $0.dimension == replacement.dimension }
+            dimensions.insert(replacement, at: min(position ?? dimensions.count, dimensions.count))
+        }
+    }
+
+    public mutating func calculateCompetencyScores() throws {
+        guard dimensions.count == Dimension.allCases.count,
+              Set(dimensions.map(\.dimension)) == Set(Dimension.allCases),
+              dimensions.allSatisfy({ $0.status == .scored }) else {
+            throw ScoringError.invalidAssessments
+        }
+        let catalog = try RubricGuide.load()
+        let scores = try dimensions.map { result -> Int in
+            let levels: [PlanningAssessment.Level]
+            if result.dimension == .planningSpecs {
+                guard let planning = result.planning, result.assessment == nil else {
+                    throw ScoringError.invalidAssessments
+                }
+                try planning.validate()
+                levels = planning.competencies.map(\.level)
+            } else {
+                guard let assessment = result.assessment, result.planning == nil,
+                      let guide = catalog.guide(for: result.dimension) else {
+                    throw ScoringError.invalidAssessments
+                }
+                try assessment.validate(expectedIDs: guide.competencies.map(\.id))
+                levels = assessment.competencies.map(\.level)
+            }
+            guard levels.allSatisfy(PlanningAssessment.Level.assessmentCases.contains) else {
+                throw ScoringError.invalidAssessments
+            }
+            return Int((Double(10 * levels.reduce(0) { $0 + $1.thirds }) / Double(3 * levels.count)).rounded())
+        }
+        for index in dimensions.indices { dimensions[index].score = scores[index] }
+        deductions = nil
+        deductionAppliedTo = nil
+        scoreBeforeDeduction = nil
+    }
+
+    public mutating func normalizePlanningAssessment() throws {
+        guard let index = dimensions.firstIndex(where: { $0.dimension == .planningSpecs }),
+              var planning = dimensions[index].planning else { return }
+        try planning.validate()
+        planning.competencies = planning.ordered
+        dimensions[index].planning = planning
+        dimensions[index].reason = planning.markdown(language: language)
+    }
+
+    /// Validate the whole response before updating any dimension. Older saved cards remain unchanged.
+    public mutating func normalizeBehavioralAssessments() throws {
+        let indices = dimensions.indices.filter {
+            dimensions[$0].dimension != .planningSpecs && dimensions[$0].assessment != nil
+        }
+        guard !indices.isEmpty else { return }
+        let catalog = try RubricGuide.load()
+        for index in indices {
+            guard let guide = catalog.guide(for: dimensions[index].dimension) else {
+                throw RubricGuide.LoadError.invalidDimensions
+            }
+            try dimensions[index].assessment!.validate(expectedIDs: guide.competencies.map(\.id))
+        }
+        for index in indices {
+            let dimension = dimensions[index].dimension
+            let guide = catalog.guide(for: dimension)!
+            let ids = guide.competencies.map(\.id)
+            var assessment = dimensions[index].assessment!
+            assessment.competencies = assessment.ordered(expectedIDs: ids).map { competency in
+                let definition = guide.competencies.first { $0.id == competency.id }!
+                var snapshot = competency
+                snapshot.title = definition.title
+                snapshot.whyItHelps = definition.whyItHelps
+                snapshot.sources = definition.sources
+                snapshot.criteria = definition.criteria
+                return snapshot
+            }
+            dimensions[index].assessment = assessment
+            dimensions[index].reason = assessment.markdown(language: language, expectedIDs: ids)
+        }
+    }
 
     /// The rubric allows at most a 1-point deduction in total, so cap it even if the judge reports more.
     public static let maxDeductionPoints = 1
