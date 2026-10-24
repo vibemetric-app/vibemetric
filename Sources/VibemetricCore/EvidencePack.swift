@@ -30,28 +30,42 @@ public enum EvidencePack {
 
         // Only the chosen sessions are parsed again in full; everything else comes from the scan's summaries.
         let chosen = select(scan.sessions, since: previous?.date)
-        var digestPaths: [String: String] = [:]
-        var firstError: Error?
+        var parsed: [Int: Session] = [:]
         let lock = NSLock()
         DispatchQueue.concurrentPerform(iterations: chosen.count) { i in
             autoreleasepool {
-                let summary = chosen[i]
                 // A transcript deleted since the scan keeps its index row, without a digest.
-                guard let session = Scanner.fullSession(for: summary) else { return }
-                let rel = "sessions/\(slug(summary.tool))-\(summary.id.suffix(12)).md"
+                guard let session = Scanner.fullSession(for: chosen[i]) else { return }
+                lock.lock(); parsed[i] = session; lock.unlock()
+            }
+        }
+        // A session active on several days gets one digest per day, so a session kept open for weeks is read as
+        // that many days of work rather than squeezed into one digest.
+        let chunks = selectChunks(chosen.indices.flatMap { i in
+            parsed[i].map { session in dayChunks(session).map { DigestChunk(summary: chosen[i], day: $0) } } ?? []
+        }, since: previous?.date)
+        var digestPaths: [String: [String]] = [:]
+        var firstError: Error?
+        DispatchQueue.concurrentPerform(iterations: chunks.count) { i in
+            autoreleasepool {
+                let chunk = chunks[i]
+                let rel = "sessions/\(slug(chunk.summary.tool))-\(chunk.summary.id.suffix(12))\(chunk.day.dated ? "-\(chunk.day.label)" : "").md"
                 do {
-                    try Redactor.scrub(timeline(session)).write(to: dir.appendingPathComponent(rel), atomically: true, encoding: .utf8)
-                    lock.lock(); digestPaths[key(summary)] = rel; lock.unlock()
+                    try Redactor.scrub(timeline(chunk.day.session, day: chunk.day))
+                        .write(to: dir.appendingPathComponent(rel), atomically: true, encoding: .utf8)
+                    lock.lock(); digestPaths[key(chunk.summary), default: []].append(rel); lock.unlock()
                 } catch {
                     lock.lock(); firstError = firstError ?? error; lock.unlock()
                 }
             }
         }
         if let firstError { throw firstError }
+        // Day digests sort by date, since their names end with it.
+        for k in digestPaths.keys { digestPaths[k]?.sort() }
 
         try Redactor.scrub(sessionIndex(scan.sessions, digestPaths: digestPaths))
             .write(to: dir.appendingPathComponent("sessions.tsv"), atomically: true, encoding: .utf8)
-        try Redactor.scrub(overview(scan, digests: digestPaths.count, now: now))
+        try Redactor.scrub(overview(scan, digests: digestPaths.count, digestFiles: chunks.count, now: now))
             .write(to: dir.appendingPathComponent("overview.md"), atomically: true, encoding: .utf8)
         try Redactor.scrub(leads(scan.sessions, digestPaths: digestPaths))
             .write(to: dir.appendingPathComponent("leads.md"), atomically: true, encoding: .utf8)
@@ -76,7 +90,7 @@ public enum EvidencePack {
 
     /// Sessions and settings that are new or changed since the previous assessment.
     /// This is the only evidence that may justify moving a previous score.
-    static func changes(since: Date, scan: ScanResult, digestPaths: [String: String]) -> String {
+    static func changes(since: Date, scan: ScanResult, digestPaths: [String: [String]]) -> String {
         var md = "# Changes since the previous assessment (\(stamp(since)))\n\n"
         let changed = scan.sessions.filter { ($0.end ?? .distantPast) > since }
         if changed.isEmpty {
@@ -85,7 +99,9 @@ public enum EvidencePack {
             md += "Sessions started or continued since then. For a continued session, only events after \(stamp(since)) are new.\n\n"
             for s in changed {
                 let started = (s.start ?? .distantPast) > since ? "new" : "continued"
-                md += "- \(digestPaths[key(s)] ?? s.file.path) — \(s.project), \(started), last activity \(stamp(s.end)): \(s.title?.clipped(70) ?? "")\n"
+                // A continued session lists only its day digests from the day of the previous score on.
+                let paths = (digestPaths[key(s)] ?? []).filter { dayOfDigest($0).map { $0 >= day(since) } ?? true }
+                md += "- \(paths.isEmpty ? s.file.path : listed(paths)) — \(s.project), \(started), last activity \(stamp(s.end)): \(s.title?.clipped(70) ?? "")\n"
             }
         }
         let settings = settingsFiles(scan).filter { (modified($0) ?? .distantPast) > since }
@@ -125,16 +141,96 @@ public enum EvidencePack {
     private static func key(_ s: SessionSummary) -> String { "\(s.tool.rawValue)|\(s.id)" }
     private static func slug(_ t: AgentTool) -> String { t == .claudeCode ? "cc" : "codex" }
 
+    /// One calendar day of a session's events. `dated` is false for a session active on a single day, whose digest
+    /// keeps the plain session name.
+    struct DayChunk {
+        var session: Session
+        var label: String
+        var index: Int
+        var count: Int
+        var dated: Bool { count > 1 }
+    }
+
+    struct DigestChunk {
+        var summary: SessionSummary
+        var day: DayChunk
+    }
+
+    /// The session split at local midnight, one chunk per day with activity, in date order. An event without a time
+    /// stays on the day of the event before it. Events keep their order within a day, even when folded-in subagent
+    /// events make the session's timeline go back to an earlier day.
+    static func dayChunks(_ s: Session) -> [DayChunk] {
+        var byDay: [String: [TimelineEvent]] = [:]
+        var previous: String?
+        for e in s.events {
+            let label = e.time.map { day($0) } ?? previous ?? day(s.start)
+            byDay[label, default: []].append(e)
+            previous = label
+        }
+        let days = byDay.keys.sorted().map { (label: $0, events: byDay[$0]!) }
+        guard days.count > 1 else { return [DayChunk(session: s, label: day(s.start), index: 1, count: 1)] }
+        return days.enumerated().map { i, d in
+            var part = s
+            part.events = d.events
+            part.start = d.events.compactMap(\.time).min() ?? s.start
+            part.end = d.events.compactMap(\.time).max() ?? s.end
+            return DayChunk(session: part, label: d.label, index: i + 1, count: days.count)
+        }
+    }
+
+    /// Keeps every chunk when under the cap; otherwise days since the previous score first (up to half the cap), then
+    /// the latest day of every session so none disappears, then the richest days, then the most recent.
+    static func selectChunks(_ chunks: [DigestChunk], since: Date? = nil) -> [DigestChunk] {
+        guard chunks.count > maxDigests else { return chunks }
+        func id(_ c: DigestChunk) -> String { "\(key(c.summary))|\(c.day.label)" }
+        func richness(_ c: DigestChunk) -> Int {
+            let s = c.day.session
+            return min(s.userTurns, 30) + min(s.toolCalls / 5, 20) + min(s.failedToolCalls, 10)
+        }
+        let newestFirst = chunks.sorted { ($0.day.session.end ?? .distantPast) > ($1.day.session.end ?? .distantPast) }
+        var picked: [String: DigestChunk] = [:]
+        if let since {
+            for c in newestFirst where (c.day.session.end ?? .distantPast) > since && picked.count < maxDigests / 2 { picked[id(c)] = c }
+        }
+        for (_, days) in Dictionary(grouping: newestFirst, by: { key($0.summary) }).sorted(by: { $0.key < $1.key })
+        where picked.count < maxDigests * 3 / 4 {
+            if let latest = days.first { picked[id(latest)] = latest }
+        }
+        for c in chunks.sorted(by: { (richness($0), id($0)) > (richness($1), id($1)) }) where picked.count < maxDigests * 7 / 8 { picked[id(c)] = c }
+        for c in newestFirst where picked.count < maxDigests { picked[id(c)] = c }
+        return Array(picked.values)
+    }
+
+    /// Several digests of one session, shortened when there are many.
+    static func listed(_ paths: [String]) -> String {
+        paths.count <= 4 ? paths.joined(separator: ", ")
+            : (paths.prefix(2) + ["… \(paths.count - 3) more …", paths[paths.count - 1]]).joined(separator: ", ")
+    }
+
+    /// The date a day digest's name ends with; nil for a single-day session's digest.
+    static func dayOfDigest(_ path: String) -> String? {
+        let name = (path as NSString).deletingPathExtension
+        guard name.count > 11 else { return nil }
+        let suffix = String(name.suffix(10))
+        return suffix.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil ? suffix : nil
+    }
+
     // MARK: Files
 
-    static func timeline(_ s: Session) -> String {
+    static func timeline(_ s: Session, day chunk: DayChunk? = nil) -> String {
         var head = "# \(s.title ?? "(untitled)") — \(s.project) (\(s.tool.rawValue))\n\n"
         head += "- session: \(s.id)\n- transcript: \(s.file.path)\n"
+        if let chunk, chunk.dated {
+            head += "- day: \(chunk.label), day \(chunk.index) of \(chunk.count) with activity in this session; "
+                + "the other days have their own digests\n"
+        }
         head += "- time: \(stamp(s.start)) → \(stamp(s.end))\n"
         head += "- models: \(s.models.sorted().joined(separator: ", "))\n"
         head += "- permission modes: \(s.permissionModes.sorted().joined(separator: ", "))\n"
-        head += "- user turns: \(s.userTurns), tool calls: \(s.toolCalls) (\(s.failedToolCalls) failed), subagents: \(s.childCount)\n"
-        head += "- signals: \(s.signals.tags.joined(separator: " "))\n\n## Timeline\n\n"
+        // Subagents and signals are counted for the whole session, not per day.
+        let whole = chunk?.dated == true ? " (whole session)" : ""
+        head += "- user turns: \(s.userTurns), tool calls: \(s.toolCalls) (\(s.failedToolCalls) failed), subagents\(whole): \(s.childCount)\n"
+        head += "- signals\(whole): \(s.signals.tags.joined(separator: " "))\n\n## Timeline\n\n"
 
         var lines: [String] = []
         var run: (name: String, inputs: [String])?
@@ -179,23 +275,27 @@ public enum EvidencePack {
         return head + body + "\n"
     }
 
-    static func sessionIndex(_ sessions: [SessionSummary], digestPaths: [String: String]) -> String {
+    static func sessionIndex(_ sessions: [SessionSummary], digestPaths: [String: [String]]) -> String {
         var out = "tool\tsession\tproject\tstart\tend\tuser_turns\ttool_calls\tfailed\tsubagents\tmodels\tpermission_modes\tsignals\tdigest\ttitle\n"
         for s in sessions {
             out += [
                 s.tool.rawValue, s.id, s.project, stamp(s.start), stamp(s.end),
                 "\(s.userTurns)", "\(s.toolCalls)", "\(s.failedToolCalls)", "\(s.childCount)",
                 s.models.sorted().joined(separator: ","), s.permissionModes.sorted().joined(separator: ","),
-                s.signals.tags.joined(separator: ","), digestPaths[key(s)] ?? "-", (s.title ?? "").clipped(90),
+                s.signals.tags.joined(separator: ","), digestPaths[key(s)]?.joined(separator: ",") ?? "-", (s.title ?? "").clipped(90),
             ].map { $0.replacingOccurrences(of: "\t", with: " ") }.joined(separator: "\t") + "\n"
         }
         return out
     }
 
-    static func overview(_ scan: ScanResult, digests: Int, now: Date) -> String {
+    static func overview(_ scan: ScanResult, digests: Int, digestFiles: Int? = nil, now: Date) -> String {
         let tz = TimeZone.current
         var md = "# Overview\n\nPrepared \(stamp(now)) (\(tz.identifier)). Parser scan took \(String(format: "%.1f", scan.duration))s.\n\n"
-        md += "Sessions: \(scan.sessions.count) total, \(digests) with digests in `sessions/`.\n\n## By tool\n\n"
+        md += "Sessions: \(scan.sessions.count) total, \(digests) with digests in `sessions/`"
+        if let digestFiles, digestFiles > digests {
+            md += " (\(digestFiles) digest files: a session active on several days has one digest per day, named with the date)"
+        }
+        md += ".\n\n## By tool\n\n"
         for tool in AgentTool.allCases {
             let ss = scan.sessions(for: tool)
             guard !ss.isEmpty else { md += "- \(tool.rawValue): no records found\n"; continue }
@@ -233,7 +333,7 @@ public enum EvidencePack {
         return md
     }
 
-    static func leads(_ sessions: [SessionSummary], digestPaths: [String: String]) -> String {
+    static func leads(_ sessions: [SessionSummary], digestPaths: [String: [String]]) -> String {
         let criteria: [(Dimension, (SessionSummary) -> Int)] = [
             (.planningSpecs, { $0.signals.specLanguage * 3 + $0.signals.planMode * 2 }),
             (.contextEngineering, { $0.signals.compactions * 3 + $0.signals.memoryInjected + $0.childCount * 2 }),
@@ -252,7 +352,7 @@ public enum EvidencePack {
             let ranked = sessions.map { ($0, weight($0)) }.filter { $0.1 > 0 }.sorted { $0.1 > $1.1 }.prefix(12)
             if ranked.isEmpty { md += "- No heuristic matches. Absence here is not proof of absence.\n"; continue }
             for (s, w) in ranked {
-                md += "- \(digestPaths[key(s)] ?? "(no digest) " + s.file.path) — \(s.project), \(day(s.start)), weight \(w): \(s.title?.clipped(70) ?? "")\n"
+                md += "- \(digestPaths[key(s)].map(listed) ?? "(no digest) " + s.file.path) — \(s.project), \(day(s.start)), weight \(w): \(s.title?.clipped(70) ?? "")\n"
             }
         }
         return md
