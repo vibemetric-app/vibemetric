@@ -18,7 +18,7 @@ let package = Package(
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.10.0"),
     ],
     targets: [
-        .target(name: "VibemetricCore", resources: [.copy("Resources/rubric.md")]),
+        .target(name: "VibemetricCore", resources: [.copy("Resources/rubric.md"), .copy("Resources/competency-guides.json")]),
         .executableTarget(name: "vibemetric", dependencies: ["VibemetricCore"]),
         // The app is a library so other modules can import its types; VibemetricApp only launches it.
         .target(name: "VibemetricAppKit", dependencies: ["VibemetricCore", .product(name: "Sparkle", package: "Sparkle")],

@@ -196,7 +196,7 @@ struct CardContent: View {
                             .foregroundStyle(Theme.muted)
                     }
                     if card.unknownCount > 0 {
-                        Text("Provisional range: \(card.unknownCount) dimension\(card.unknownCount == 1 ? "" : "s") not scored")
+                        Text("\(card.unknownCount) dimension\(card.unknownCount == 1 ? "" : "s") not scored")
                             .scaledFont(10).foregroundStyle(Theme.muted)
                     }
                     if card.totalDeductionPoints > 0 {

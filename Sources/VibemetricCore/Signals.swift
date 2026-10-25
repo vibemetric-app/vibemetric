@@ -13,6 +13,7 @@ enum SignalExtractor {
     /// Shell commands that write files: redirects, tee, in-place edits, copies and moves.
     static let shellWrite = regex(#"(>|\btee\b|\bsed\s+-i|\bperl\s+-[a-z]*i|\bcp\s|\bmv\s|apply_patch|write_text|\.write\()"#)
     static let writeTools: Set<String> = ["Edit", "Write", "MultiEdit", "NotebookEdit", "apply_patch", "str_replace_editor"]
+    static let shellTools: Set<String> = ["Bash", "exec", "exec_command", "shell", "js", "local_shell"]
     static let browserTools = ["Browser", "browser", "playwright", "computer", "Simulator", "screenshot", "navigate"]
 
     static func annotate(_ s: inout Session) {
@@ -27,7 +28,7 @@ enum SignalExtractor {
                 if matches(spec, text) { sig.specLanguage += 1 }
                 if matches(eval, text) { sig.evalLanguage += 1 }
             case let .tool(name, input, failed, result):
-                let isShell = ["Bash", "exec", "exec_command", "shell", "js", "local_shell"].contains(name)
+                let isShell = shellTools.contains(name)
                 if writeTools.contains(name) || (isShell && input.contains("apply_patch")) {
                     sawEdit = true
                     sig.edits += 1
@@ -61,7 +62,7 @@ enum SignalExtractor {
         s.signals = sig
     }
 
-    private static func matches<S: StringProtocol>(_ r: NSRegularExpression, _ text: S) -> Bool {
+    static func matches<S: StringProtocol>(_ r: NSRegularExpression, _ text: S) -> Bool {
         let str = String(text)
         return r.firstMatch(in: str, range: NSRange(str.startIndex..., in: str)) != nil
     }

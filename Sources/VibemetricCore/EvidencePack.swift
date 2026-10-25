@@ -137,10 +137,10 @@ public enum EvidencePack {
         head += "- signals: \(s.signals.tags.joined(separator: " "))\n\n## Timeline\n\n"
 
         var lines: [String] = []
-        var run: (name: String, inputs: [String])?
+        var run: (time: String, count: Int, guides: [String])?
         func flush() {
             if let r = run {
-                lines.append(r.inputs.count == 1 ? "TOOL \(r.name): \(r.inputs[0])" : "TOOL \(r.name) ×\(r.inputs.count): \(r.inputs.joined(separator: " | ").clipped(300))")
+                lines.append("[\(r.time)] READ ×\(r.count)" + (r.guides.isEmpty ? "" : ": \(r.guides.joined(separator: ", ").clipped(300))"))
             }
             run = nil
         }
@@ -148,15 +148,17 @@ public enum EvidencePack {
             let t = clock(e.time)
             switch e.kind {
             case let .tool(name, input, failed, result):
-                // Collapse runs of successful read-only lookups so the digest stays skimmable.
-                if !failed, ["Read", "Grep", "Glob", "LS", "ToolSearch"].contains(name) {
-                    if run?.name == name { run!.inputs.append(input.clipped(80)) } else { flush(); run = (name, [input.clipped(80)]) }
+                // Successful lookups collapse into one READ line that keeps only the guidance files they opened.
+                if !failed, isLookup(name: name, input: input) {
+                    if run == nil { run = (t, 0, []) }
+                    run!.count += 1
+                    for guide in guidanceFiles(in: input) where !run!.guides.contains(guide) { run!.guides.append(guide) }
                     continue
                 }
                 flush()
-                let mark = failed ? "✗" : "✓"
-                let out = result.isEmpty ? "" : " → \(result.clipped(failed ? 300 : 140))"
-                lines.append("[\(t)] TOOL \(name) \(mark): \(input.clipped(220))\(out)")
+                // Kept calls show what ran and whether it succeeded; only a failure keeps its error.
+                let out = failed && !result.isEmpty ? " → \(result.clipped(200))" : ""
+                lines.append("[\(t)] TOOL \(name) \(failed ? "✗" : "✓"): \(input.clipped(220))\(out)")
             case let .user(text):
                 flush(); lines.append("[\(t)] USER: \(text.clipped(700))")
             case let .assistant(text):
@@ -177,6 +179,65 @@ public enum EvidencePack {
             body += "\n\n(… digest trimmed; \(lines.count - keep.count) routine events omitted — see the transcript for full detail)"
         }
         return head + body + "\n"
+    }
+
+    static let lookupTools: Set<String> = ["Read", "Grep", "Glob", "LS", "ToolSearch", "WebFetch", "WebSearch", "view_image"]
+    /// Shell programs that only look at files or state; a command made only of these is a lookup.
+    static let lookupCommands: Set<String> = [
+        "cd", "cat", "ls", "grep", "rg", "sed", "head", "tail", "find", "wc", "pwd", "echo", "stat", "tree", "jq",
+        "nl", "file", "du", "which", "sort", "uniq", "cut", "awk", "diff", "tr", "basename", "dirname", "realpath",
+    ]
+    static let lookupGitCommands: Set<String> = ["status", "log", "show", "diff", "branch"]
+    private static let discardedOutput = try! NSRegularExpression(pattern: #"\d?>\s*/dev/null|\d>&\d"#)
+
+    /// Whether a call only looks things up: a lookup tool, or a shell command whose every piece is a lookup
+    /// program and that writes nothing.
+    static func isLookup(name: String, input: String) -> Bool {
+        if lookupTools.contains(name) { return true }
+        guard SignalExtractor.shellTools.contains(name) else { return false }
+        // Quoted patterns may hold `|`, `;` or `>` that neither split nor redirect the command.
+        let unquoted = withoutQuotedText(input)
+        let command = discardedOutput.stringByReplacingMatches(in: unquoted, range: NSRange(unquoted.startIndex..., in: unquoted), withTemplate: "")
+        if SignalExtractor.matches(SignalExtractor.shellWrite, command) || command.contains("-delete") || command.contains("-exec") {
+            return false
+        }
+        let pieces = command.components(separatedBy: CharacterSet(charactersIn: "|;&\n")).map { $0.split(whereSeparator: \.isWhitespace) }
+        return pieces.contains { !$0.isEmpty } && pieces.allSatisfy { words in
+            let words = words.drop { $0.contains("=") && !$0.hasPrefix("-") }
+            guard let first = words.first.map({ String($0.split(separator: "/").last ?? $0) }) else { return true }
+            if first == "git" {
+                var rest = words.dropFirst()
+                while let flag = rest.first, flag.hasPrefix("-") { rest = rest.dropFirst(flag == "-C" ? 2 : 1) }
+                return rest.first.map { lookupGitCommands.contains(String($0)) } ?? false
+            }
+            return lookupCommands.contains(first)
+        }
+    }
+
+    /// The command with single- and double-quoted text replaced by an empty `''`; an unclosed quote runs to the end.
+    static func withoutQuotedText(_ command: String) -> String {
+        var out = ""
+        var quote: Character?
+        var escaped = false
+        for ch in command {
+            if let q = quote {
+                if escaped { escaped = false } else if ch == "\\" && q == "\"" { escaped = true } else if ch == q { quote = nil; out += "''" }
+            } else if ch == "'" || ch == "\"" {
+                quote = ch
+            } else {
+                out.append(ch)
+            }
+        }
+        return out
+    }
+
+    /// Guidance, memory, and skill files named in a lookup, as their last two path components.
+    static func guidanceFiles(in input: String) -> [String] {
+        input.split(whereSeparator: { $0.isWhitespace || "\"'`,()".contains($0) }).compactMap { word in
+            let word = String(word)
+            guard SignalExtractor.matches(SignalExtractor.memoryPath, word) else { return nil }
+            return word.split(separator: "/").suffix(2).joined(separator: "/")
+        }
     }
 
     static func sessionIndex(_ sessions: [SessionSummary], digestPaths: [String: String]) -> String {

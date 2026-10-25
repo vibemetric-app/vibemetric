@@ -1,8 +1,8 @@
 import SwiftUI
 import VibemetricCore
 
-/// The first screen of a result: the score, what's going well, and what to fix, one short box per category.
-/// The full explanations, evidence and steps sit below it in `ReadableCardContent`, behind "See all 10 categories".
+/// The first screen of a result: the score, strengths card, and category list.
+/// Each category row opens its full explanation, evidence and steps.
 struct ResultSummary: View {
     @Environment(\.textScale) private var scale
     var record: CardRecord
@@ -142,6 +142,7 @@ private struct FixBox: View {
     var note: String?
     var deductions: [ScoreCard.Deduction]
     var footer: AnyView?
+    var expandAll: Bool
     @State private var expanded: Bool
 
     init(result: ScoreCard.DimensionResult, change: ScoreChange?, note: String?, deductions: [ScoreCard.Deduction],
@@ -151,6 +152,7 @@ private struct FixBox: View {
         self.note = note
         self.deductions = deductions
         self.footer = footer
+        self.expandAll = expanded
         _expanded = State(initialValue: expanded)
     }
 
@@ -184,7 +186,7 @@ private struct FixBox: View {
                 .onHover { hovering = $0 }
                 .accessibilityHint(expanded ? "Hides the details" : "Shows the details")
             if expanded {
-                CategoryDetails(result: result, note: note, deductions: deductions, footer: footer)
+                CategoryDetails(result: result, note: note, deductions: deductions, footer: footer, expandAll: expandAll)
                     .padding(.leading, 18 + ringSize + 14)
                     .padding(.trailing, 18)
                     .padding(.bottom, 18)

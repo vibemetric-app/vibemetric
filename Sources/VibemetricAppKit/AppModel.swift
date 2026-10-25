@@ -83,6 +83,7 @@ public enum Store {
                 // Rubric 3 cards saved before the deduction moved to Security get the same treatment on load.
                 var record = record
                 if record.rubricVersion == "3" { record.card.applyDeductionToSecurity() }
+                record.card = (try? record.card.hidingUserPaths()) ?? record.card
                 return record
             }
             .sorted { $0.createdAt > $1.createdAt }

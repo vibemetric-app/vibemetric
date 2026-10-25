@@ -78,7 +78,7 @@ Shortcuts: **⌘N** starts a new assessment; **⌘+ / ⌘- / ⌘0** change the t
 | Security | Is the agent limited to what each task needs? |
 | Efficiency & Cost | Do models and effort match each task's difficulty? |
 
-Each is scored 0–10 from what you actually did, not from how many prompts you sent. The full rubric is in [`rubric.md`](Sources/VibemetricCore/Resources/rubric.md).
+The AI judges each competency's behavioral level and each category's score from the records it actually reads. It considers the quality, consistency, and gaps in the observed work using [`rubric.md`](Sources/VibemetricCore/Resources/rubric.md). The app preserves those judgments instead of counting task ratings or converting competency levels into points. Each category receives an integer score from 0 to 10, and the ten category scores add up to a total out of 100. Missing evidence is reported separately from observed failures. A category with no applicable competencies stays unscored.
 
 ## Privacy note
 
