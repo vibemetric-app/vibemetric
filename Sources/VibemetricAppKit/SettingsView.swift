@@ -118,7 +118,7 @@ struct SettingsView: View {
             .padding(.horizontal, 32)
             .padding(.vertical, 28)
             .frame(maxWidth: 1100, alignment: .leading)
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity)
         }
         .onAppear { openAtLogin = LaunchAtLogin.isEnabled }
     }
