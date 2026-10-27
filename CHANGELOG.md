@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.2 (2026-10-27)
 
 - A result's categories can be shown as a radar chart: switch between Text and Radar next to "Details" (formerly "Focus on these next"). The chart shows all 10 categories, with the previous score as a dashed outline. Click a category's name to open its quick lines and full details in a panel over the chart. Vibemetric remembers which view you picked.
 
