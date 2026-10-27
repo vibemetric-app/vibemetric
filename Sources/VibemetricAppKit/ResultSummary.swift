@@ -12,6 +12,7 @@ struct ResultSummary: View {
     var expandAll = false
     var deepDiveFooter: ((VibemetricCore.Dimension) -> AnyView)?
     @State private var showsAllFixes = false
+    @AppStorage(ResultViewMode.storageKey) private var mode: ResultViewMode = .text
 
     /// Boxes shown before "Show more".
     static let visibleFixes = 10
@@ -126,13 +127,33 @@ struct ResultSummary: View {
     private var toFix: some View {
         let shown = showsAllFixes ? fixes : Array(fixes.prefix(Self.visibleFixes))
         let hidden = fixes.dropFirst(Self.visibleFixes)
+        // Shared and exported cards always show the list.
+        let showsRadar = mode == .radar && !expandAll
         return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                SummaryHeading(text: "Focus on these next", symbol: "exclamationmark.triangle", color: Theme.color(for: .developing))
-                if fixes.count > Self.visibleFixes {
+            HStack(alignment: .center, spacing: 6) {
+                SummaryHeading(text: "Details", symbol: "list.bullet.rectangle", color: Theme.ink)
+                if fixes.count > Self.visibleFixes && !showsRadar {
                     Text("· \(shown.count) of \(fixes.count)").scaledFont(13).foregroundStyle(Theme.muted)
                 }
+                Spacer(minLength: 12)
+                if !expandAll { ResultViewPicker(mode: $mode) }
             }
+            if showsRadar {
+                RadarChart(card: card, baseline: baseline?.card, baselineDate: baseline?.createdAt) { dimension in
+                    AnyView(card.dimensions.first { $0.dimension == dimension }.map { d in
+                        CategoryDetails(result: d, note: card.deductionNote(for: d.dimension),
+                                        deductions: card.deductionAppliedTo == d.dimension ? card.deductions ?? [] : [],
+                                        footer: deepDiveFooter?(d.dimension))
+                    })
+                }
+            } else {
+                fixList(shown: shown, hidden: hidden)
+            }
+        }
+    }
+
+    private func fixList(shown: [ScoreCard.DimensionResult], hidden: ArraySlice<ScoreCard.DimensionResult>) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
             // One card, a row per category, split by inset hairlines.
             VStack(spacing: 0) {
                 ForEach(Array(shown.enumerated()), id: \.element.id) { i, d in
@@ -318,7 +339,7 @@ private struct ChangePill: View {
 }
 
 
-private extension View {
+extension View {
     /// The pointing-hand cursor while the pointer is over this view, as for a link.
     func pointingHandCursor() -> some View {
         onHover { inside in

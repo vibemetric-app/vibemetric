@@ -54,6 +54,30 @@ enum Snapshot {
                 try render(collapsed, scheme: scheme)
                     .write(to: dir.appendingPathComponent("card-collapsed-\(scheme == .light ? "light" : "dark").png"))
             }
+            // The same card on the radar chart tab.
+            let savedMode = UserDefaults.standard.string(forKey: ResultViewMode.storageKey)
+            UserDefaults.standard.set(ResultViewMode.radar.rawValue, forKey: ResultViewMode.storageKey)
+            for scheme in [ColorScheme.light, .dark] {
+                let radar = CardContent(record: record, baseline: baseline, expandAll: false)
+                    .environment(\.textScale, textScale)
+                    .frame(width: 860 * max(1, textScale)).background(Theme.paper).environment(\.colorScheme, scheme)
+                try render(radar, scheme: scheme)
+                    .write(to: dir.appendingPathComponent("card-radar-\(scheme == .light ? "light" : "dark").png"))
+            }
+            UserDefaults.standard.set(savedMode, forKey: ResultViewMode.storageKey)
+            // The radar chart's panel for the weakest category.
+            if let weakest = card.dimensions.filter({ $0.score != nil }).min(by: { ($0.score ?? 0) < ($1.score ?? 0) }) {
+                let previous = baseline?.card.dimensions.first { $0.dimension == weakest.dimension }?.score
+                for scheme in [ColorScheme.light, .dark] {
+                    let popover = RadarChart(card: card, baseline: baseline?.card, baselineDate: baseline?.createdAt, opened: weakest.dimension) { d in
+                        AnyView(card.dimensions.first { $0.dimension == d }.map { CategoryDetails(result: $0) })
+                    }
+                    .frame(width: 796).padding(32).background(Theme.paper)
+                        .environment(\.colorScheme, scheme)
+                    try render(popover, scheme: scheme)
+                        .write(to: dir.appendingPathComponent("radar-panel-\(scheme == .light ? "light" : "dark").png"))
+                }
+            }
             if let share = ShareCard.png(card: card, date: Date()) { try share.write(to: dir.appendingPathComponent("share.png")) }
             // The menu bar panel for the same card, in a throwaway preferences domain.
             let suite = "vibemetric-snapshot-\(UUID())"
