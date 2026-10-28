@@ -143,14 +143,11 @@ struct RootView: View {
         return NavigationSplitView(columnVisibility: $columns) {
             VStack(spacing: 0) {
                 if !Extensions.sidebarTabs.isEmpty {
-                    Picker("View", selection: $model.sidebarTab) {
-                        Text(AppModel.generalTab).tag(AppModel.generalTab)
-                        ForEach(Extensions.sidebarTabs) { Text($0.id).tag($0.id) }
-                    }
-                    .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    PillTabBar(tabs: [(AppModel.generalTab, "clock.arrow.circlepath")] + Extensions.sidebarTabs.map { ($0.id, $0.symbol) },
+                               selection: $model.sidebarTab, compact: true)
+                        .padding(.horizontal, 12)
+                        .padding(.top, 12)
+                        .padding(.bottom, 8)
                 }
 
                 if let tab = Extensions.sidebarTabs.first(where: { $0.id == model.sidebarTab }) {
@@ -362,28 +359,38 @@ private struct WindowDragArea: NSViewRepresentable {
     func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
-/// The header's tabs: an icon and a name each, with the open one on a raised pill.
+/// The header's tabs: an icon and a name each, with the open one on an accent pill.
 private struct HeaderTabBar: View {
     @Binding var selection: String
 
-    private var tabs: [(id: String, symbol: String)] {
-        [(AppModel.scoringTab, "gauge.with.dots.needle.67percent")] + Extensions.headerTabs.map { ($0.id, $0.symbol) }
+    var body: some View {
+        PillTabBar(tabs: [(AppModel.scoringTab, "gauge.with.dots.needle.67percent")] + Extensions.headerTabs.map { ($0.id, $0.symbol) },
+                   selection: $selection)
     }
+}
+
+/// Tabs as pills in a rounded track, the open one filled with the accent color. `compact` is the sidebar's size,
+/// where the tabs share the full width.
+struct PillTabBar: View {
+    var tabs: [(id: String, symbol: String)]
+    @Binding var selection: String
+    var compact = false
 
     var body: some View {
         HStack(spacing: 2) {
             ForEach(tabs, id: \.id) { tab in
                 let selected = tab.id == selection
                 Button { selection = tab.id } label: {
-                    // Not a Label: the toolbar would show its icon alone.
-                    HStack(spacing: 7) {
+                    // Not a Label: a toolbar would show its icon alone.
+                    HStack(spacing: compact ? 6 : 7) {
                         Image(systemName: tab.symbol)
                         Text(tab.id)
                     }
-                        .font(.system(size: 15, weight: .semibold))
+                        .font(.system(size: compact ? 13 : 15, weight: .semibold))
                         .foregroundStyle(selected ? Color.white : Theme.ink.opacity(0.75))
-                        .padding(.horizontal, 18)
-                        .frame(height: 34)
+                        .padding(.horizontal, compact ? 10 : 18)
+                        .frame(maxWidth: compact ? .infinity : nil)
+                        .frame(height: compact ? 30 : 34)
                         .background {
                             if selected {
                                 Capsule().fill(Theme.accent).shadow(color: Theme.accent.opacity(0.35), radius: 4, y: 1)

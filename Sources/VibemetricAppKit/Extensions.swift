@@ -47,11 +47,15 @@ public enum Extensions {
 public struct SidebarTabExtension: Identifiable {
     /// The tab's label, for example "Reports".
     public let id: String
+    /// The SF Symbol shown before the label, for example "doc.text".
+    public let symbol: String
     public let sidebar: @MainActor () -> AnyView
     public let detail: @MainActor () -> AnyView
 
-    public init(id: String, sidebar: @escaping @MainActor () -> AnyView, detail: @escaping @MainActor () -> AnyView) {
+    public init(id: String, symbol: String = "square.grid.2x2", sidebar: @escaping @MainActor () -> AnyView,
+                detail: @escaping @MainActor () -> AnyView) {
         self.id = id
+        self.symbol = symbol
         self.sidebar = sidebar
         self.detail = detail
     }
