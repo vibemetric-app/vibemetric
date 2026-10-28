@@ -137,7 +137,7 @@ struct RootView: View {
         .onAppear { model.openMainWindow = { openWindow(id: "main") } }
     }
 
-    /// "Scoring": the sidebar with General and the sidebar tabs, and the detail beside it.
+    /// "My scores": the sidebar with General and the sidebar tabs, and the detail beside it.
     private var splitView: some View {
         @Bindable var model = model
         return NavigationSplitView(columnVisibility: $columns) {
@@ -318,7 +318,7 @@ struct HistoryRow: View {
     }
 }
 
-/// The window's header, across its full width: the window buttons on the left, "Scoring" and the module tabs in the
+/// The window's header, across its full width: the window buttons on the left, "My scores" and the module tabs in the
 /// middle, and the export buttons and Settings on the right. The same buttons on every screen, so nothing moves.
 private struct WindowHeader: View {
     var record: CardRecord?

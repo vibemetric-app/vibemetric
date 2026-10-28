@@ -8,7 +8,7 @@ import VibemetricCore
 public enum Extensions {
     /// Extra sidebar views next to "General". The tab picker appears only when this isn't empty.
     public static var sidebarTabs: [SidebarTabExtension] = []
-    /// Extra views in the window header's picker, next to "Scoring". Each fills the window, without a sidebar. The
+    /// Extra views in the window header's picker, next to "My scores". Each fills the window, without a sidebar. The
     /// header picker appears only when this isn't empty.
     public static var headerTabs: [HeaderTabExtension] = []
     /// Shown under each category on the score card.
@@ -61,7 +61,7 @@ public struct SidebarTabExtension: Identifiable {
     }
 }
 
-/// A view that a module adds to the window header's picker, next to "Scoring". It fills the window, without a sidebar.
+/// A view that a module adds to the window header's picker, next to "My scores". It fills the window, without a sidebar.
 public struct HeaderTabExtension: Identifiable {
     /// The tab's label, for example "Reports".
     public let id: String
