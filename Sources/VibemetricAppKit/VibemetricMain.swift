@@ -70,7 +70,8 @@ public struct VibemetricMain: App {
                 // Width comes from RootView, which follows the sidebar; an outer minWidth here would override it.
                 .frame(minHeight: 640)
         }
-        .windowToolbarStyle(.unified(showsTitle: false))
+        // No system toolbar: RootView draws its own header across the whole window, under the window buttons.
+        .windowStyle(.hiddenTitleBar)
         .commands {
             CommandGroup(after: .appInfo) {
                 if AppUpdater.shared.isEnabled {
@@ -104,8 +105,6 @@ struct RootView: View {
     /// The sidebar's current width. The window's minimum is this plus the detail column's minimum, so dragging
     /// the window's edge in stops before it would take space from the sidebar.
     @State private var sidebarWidth = RootView.sidebarIdealWidth
-    /// Where the detail column starts in the window, for centering the header's view picker.
-    @State private var detailMinX: CGFloat = 0
 
     /// Sidebar widths: it never gets narrower than the minimum, and people can drag it out to the maximum.
     static let sidebarMinWidth: CGFloat = 220
@@ -119,20 +118,18 @@ struct RootView: View {
     static let sidebarChromeAllowance: CGFloat = 8
 
     var body: some View {
-        Group {
+        VStack(spacing: 0) {
+            WindowHeader(record: exportableRecord)
             if let tab = Extensions.headerTabs.first(where: { $0.id == model.headerTab }) {
                 ZStack {
-                    Theme.paper.ignoresSafeArea()
+                    Theme.paper
                     if model.showsSettings { SettingsView() } else { tab.content() }
-                }
-                .toolbar {
-                    HeaderPickerToolbar(sidebarWidth: 0)
-                    SettingsToolbar()
                 }
             } else {
                 splitView
             }
         }
+        .ignoresSafeArea(.container, edges: .top)
         .onChange(of: model.sidebarTab) { _, _ in model.showsSettings = false }
         .onChange(of: model.headerTab) { _, _ in model.showsSettings = false }
         .frame(minWidth: max(sidebarWidth, Self.sidebarMinWidth) + Self.sidebarChromeAllowance + Self.detailMinWidth)
@@ -182,13 +179,6 @@ struct RootView: View {
                     HomeView()
                 }
             }
-            // The same buttons on every screen, so the toolbar never changes height or layout.
-            .toolbar {
-                HeaderPickerToolbar(sidebarWidth: detailMinX)
-                CardExportToolbar(record: exportableRecord)
-                SettingsToolbar()
-            }
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .global).minX } action: { detailMinX = $0 }
             // A small ideal width, so the split view lets the detail shrink to its minimum before anything else.
             .frame(minWidth: Self.detailMinWidth, idealWidth: Self.detailMinWidth, maxWidth: .infinity)
             .navigationSplitViewColumnWidth(min: Self.detailMinWidth, ideal: 860)
@@ -202,7 +192,7 @@ struct RootView: View {
 extension RootView {
     /// The result the toolbar's export buttons act on: the one on screen in the General tab.
     var exportableRecord: CardRecord? {
-        guard !model.showsSettings, !Extensions.sidebarTabs.contains(where: { $0.id == model.sidebarTab }) else { return nil }
+        guard !model.showsSettings, model.headerTab == AppModel.scoringTab, !Extensions.sidebarTabs.contains(where: { $0.id == model.sidebarTab }) else { return nil }
         return model.selected
     }
 
@@ -331,49 +321,124 @@ struct HistoryRow: View {
     }
 }
 
-/// "Scoring" and the header tabs, in the middle of the window's header, when a module adds any. The toolbar centers
-/// it over the detail column, so empty space as wide as the sidebar on its right moves it to the window's middle.
-private struct HeaderPickerToolbar: ToolbarContent {
-    var sidebarWidth: CGFloat
-    @Environment(AppModel.self) private var model
+/// The window's header, across its full width: the window buttons on the left, "Scoring" and the module tabs in the
+/// middle, and the export buttons and Settings on the right. The same buttons on every screen, so nothing moves.
+private struct WindowHeader: View {
+    var record: CardRecord?
+    static let height: CGFloat = 56
 
-    var body: some ToolbarContent {
-        if !Extensions.headerTabs.isEmpty {
-            if #available(macOS 26, *) {
-                // The glass behind a toolbar item would stretch over the empty space too.
-                item.sharedBackgroundVisibility(.hidden)
-            } else {
-                item
+    var body: some View {
+        ZStack {
+            WindowDragArea()
+            if !Extensions.headerTabs.isEmpty {
+                @Bindable var model = model
+                HeaderTabBar(selection: $model.headerTab)
             }
+            HStack(spacing: 2) {
+                Spacer()
+                CardExportButtons(record: record)
+                SettingsButton()
+            }
+            .padding(.trailing, 14)
+        }
+        .frame(height: Self.height)
+        .background(.bar)
+        .overlay(alignment: .bottom) { Rectangle().fill(Theme.rule).frame(height: 1) }
+    }
+
+    @Environment(AppModel.self) private var model
+}
+
+/// Empty header space that drags the window, and zooms it on a double-click, like a title bar.
+private struct WindowDragArea: NSViewRepresentable {
+    final class DragView: NSView {
+        override var mouseDownCanMoveWindow: Bool { true }
+        override func mouseDown(with event: NSEvent) {
+            if event.clickCount == 2 { window?.performZoom(nil) } else { window?.performDrag(with: event) }
         }
     }
 
-    private var item: some ToolbarContent {
-        @Bindable var model = model
-        return ToolbarItem(placement: .principal) {
-            Picker("View", selection: $model.headerTab) {
-                Text(AppModel.scoringTab).tag(AppModel.scoringTab)
-                ForEach(Extensions.headerTabs) { Text($0.id).tag($0.id) }
+    func makeNSView(context: Context) -> NSView { DragView() }
+    func updateNSView(_ nsView: NSView, context: Context) {}
+}
+
+/// The header's tabs: an icon and a name each, with the open one on a raised pill.
+private struct HeaderTabBar: View {
+    @Binding var selection: String
+
+    private var tabs: [(id: String, symbol: String)] {
+        [(AppModel.scoringTab, "gauge.with.dots.needle.67percent")] + Extensions.headerTabs.map { ($0.id, $0.symbol) }
+    }
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(tabs, id: \.id) { tab in
+                let selected = tab.id == selection
+                Button { selection = tab.id } label: {
+                    // Not a Label: the toolbar would show its icon alone.
+                    HStack(spacing: 7) {
+                        Image(systemName: tab.symbol)
+                        Text(tab.id)
+                    }
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(selected ? Color.white : Theme.ink.opacity(0.75))
+                        .padding(.horizontal, 18)
+                        .frame(height: 34)
+                        .background {
+                            if selected {
+                                Capsule().fill(Theme.accent).shadow(color: Theme.accent.opacity(0.35), radius: 4, y: 1)
+                            }
+                        }
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .pointingHandCursor()
+                .accessibilityAddTraits(selected ? .isSelected : [])
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .padding(.trailing, sidebarWidth)
         }
+        .padding(3)
+        .background(Capsule().fill(Theme.ink.opacity(0.07)))
+        .overlay(Capsule().strokeBorder(Theme.rule))
+        .animation(.easeOut(duration: 0.15), value: selection)
     }
 }
 
 /// The gear at the header's right end: opens Settings, and closes it again.
-private struct SettingsToolbar: ToolbarContent {
+private struct SettingsButton: View {
     @Environment(AppModel.self) private var model
 
-    var body: some ToolbarContent {
-        ToolbarItem(placement: .primaryAction) {
-            Button {
-                if model.showsSettings { model.showsSettings = false } else { model.showSettings() }
-            } label: {
-                Label("Settings", systemImage: model.showsSettings ? "gearshape.fill" : "gearshape")
-            }
-            .help("Settings (⌘,)")
+    var body: some View {
+        Button {
+            if model.showsSettings { model.showsSettings = false } else { model.showSettings() }
+        } label: {
+            Label("Settings", systemImage: model.showsSettings ? "gearshape.fill" : "gearshape")
+        }
+        .buttonStyle(HeaderIconButtonStyle())
+        .help("Settings (⌘,)")
+    }
+}
+
+/// A header icon: a little larger than a toolbar's, with a rounded highlight under the pointer.
+struct HeaderIconButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HeaderIcon(configuration: configuration)
+    }
+
+    private struct HeaderIcon: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.isEnabled) private var isEnabled
+        @State private var hovering = false
+
+        var body: some View {
+            configuration.label
+                .labelStyle(.iconOnly)
+                .font(.system(size: 16))
+                .foregroundStyle(isEnabled ? Theme.ink : Theme.muted.opacity(0.5))
+                .frame(width: 34, height: 32)
+                .background(RoundedRectangle(cornerRadius: 8)
+                    .fill(Theme.ink.opacity(configuration.isPressed ? 0.14 : hovering && isEnabled ? 0.08 : 0)))
+                .contentShape(Rectangle())
+                .onHover { hovering = $0 }
         }
     }
 }

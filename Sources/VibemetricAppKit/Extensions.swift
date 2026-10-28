@@ -61,10 +61,13 @@ public struct SidebarTabExtension: Identifiable {
 public struct HeaderTabExtension: Identifiable {
     /// The tab's label, for example "Reports".
     public let id: String
+    /// The SF Symbol shown before the label, for example "doc.text".
+    public let symbol: String
     public let content: @MainActor () -> AnyView
 
-    public init(id: String, content: @escaping @MainActor () -> AnyView) {
+    public init(id: String, symbol: String = "square.grid.2x2", content: @escaping @MainActor () -> AnyView) {
         self.id = id
+        self.symbol = symbol
         self.content = content
     }
 }
