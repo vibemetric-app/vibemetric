@@ -130,13 +130,11 @@ struct ResultSummary: View {
         // Shared and exported cards always show the list.
         let showsRadar = mode == .radar && !expandAll
         return VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .center, spacing: 6) {
+            if expandAll {
+                // Shared and exported cards have only the list, under a plain heading.
                 SummaryHeading(text: "Details", symbol: "list.bullet.rectangle", color: Theme.ink)
-                if fixes.count > Self.visibleFixes && !showsRadar {
-                    Text("· \(shown.count) of \(fixes.count)").scaledFont(13).foregroundStyle(Theme.muted)
-                }
-                Spacer(minLength: 12)
-                if !expandAll { ResultViewPicker(mode: $mode) }
+            } else {
+                ResultViewPicker(mode: $mode)
             }
             if showsRadar {
                 RadarChart(card: card, baseline: baseline?.card, baselineDate: baseline?.createdAt) { dimension in
