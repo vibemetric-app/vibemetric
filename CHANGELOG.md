@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1 (2026-10-29)
+
+- A result's categories open with two picture tiles, List and Chart, in place of the small Text / Radar switch, so the two views are easy to find and to switch between.
+- Official app: leave a team from its ⋯ menu. Anyone but the last member can leave, after a confirmation that says who becomes manager when the only manager leaves.
+- Official app: on an empty Teams page, Create team opens a small window to name the team.
+
 ## 0.6.0 (2026-10-28)
 
 - A new header runs across the whole window, with larger My scores and Team tabs in the middle and the copy, export and Settings buttons at the right. The sidebar's General and Categories tabs match its look.
