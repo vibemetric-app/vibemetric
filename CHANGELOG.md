@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.0 (2026-10-28)
+
+- A new header runs across the whole window, with larger My scores and Team tabs in the middle and the copy, export and Settings buttons at the right. The sidebar's General and Categories tabs match its look.
+- Official app: Teams. Sign in with Google, make a team with Vibemetric Pro, and invite teammates by email. An invitation shows up as a card on the Team tab, where one click accepts it. Each member picks which score to share, and a shared score shows the same Summary and category lines as their own result.
+- Official app: choose the name your teammates see, when you sign in or later in Settings → Account.
+- Official app: Settings has an Account section for Google sign-in and a separate Vibemetric Pro section for your plan and Pro key.
+
 ## 0.5.2 (2026-10-27)
 
 - A result's categories can be shown as a radar chart: switch between Text and Radar next to "Details" (formerly "Focus on these next"). The chart shows all 10 categories, with the previous score as a dashed outline. Click a category's name to open its quick lines and full details in a panel over the chart. Vibemetric remembers which view you picked.
