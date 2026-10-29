@@ -9,8 +9,8 @@ enum ResultViewMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .text: "Text"
-        case .radar: "Radar"
+        case .text: "List"
+        case .radar: "Chart"
         }
     }
 
@@ -22,40 +22,95 @@ enum ResultViewMode: String, CaseIterable, Identifiable {
     }
 }
 
-/// The two views as a pair of tabs: an icon and a name each, the open one on a white pill.
+/// The two views as a pair of small tiles, each a picture of the view with its name below.
+/// The open one has an accent border and tint, so the choice is easy to see and to change.
 struct ResultViewPicker: View {
     @Binding var mode: ResultViewMode
     @State private var hovered: ResultViewMode?
+    @Environment(\.textScale) private var scale
 
     var body: some View {
-        HStack(spacing: 2) {
+        HStack(spacing: 10) {
             ForEach(ResultViewMode.allCases) { m in
                 let isOn = m == mode
                 Button { withAnimation(.easeOut(duration: 0.15)) { mode = m } } label: {
-                    Label(m.title, systemImage: m.symbol)
-                        .scaledFont(13, weight: isOn ? .semibold : .regular)
-                        .foregroundStyle(isOn ? Theme.ink : Theme.muted)
-                        .padding(.horizontal, 14)
-                        .padding(.vertical, 6)
-                        .background {
-                            if isOn {
-                                RoundedRectangle(cornerRadius: 7).fill(Theme.card)
-                                    .shadow(color: .black.opacity(0.08), radius: 1, y: 1)
-                            } else if hovered == m {
-                                RoundedRectangle(cornerRadius: 7).fill(Theme.rule.opacity(0.5))
-                            }
-                        }
-                        .contentShape(Rectangle())
+                    VStack(spacing: 6) {
+                        ViewModeIllustration(mode: m, isOn: isOn)
+                            .frame(width: 52 * max(1, scale), height: 38 * max(1, scale))
+                        Text(m.title).scaledFont(13, weight: .semibold).foregroundStyle(isOn ? Theme.accent : Theme.ink)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.top, 10)
+                    .padding(.bottom, 8)
+                    .background(isOn ? Theme.accent.opacity(0.07) : (hovered == m ? Theme.rule.opacity(0.35) : Theme.card),
+                                in: RoundedRectangle(cornerRadius: 10))
+                    .overlay(RoundedRectangle(cornerRadius: 10)
+                        .strokeBorder(isOn ? Theme.accent.opacity(0.55) : Theme.rule, lineWidth: 1))
+                    .contentShape(RoundedRectangle(cornerRadius: 10))
                 }
                 .buttonStyle(.plain)
                 .onHover { hovered = $0 ? m : (hovered == m ? nil : hovered) }
+                .accessibilityLabel(m.title)
                 .accessibilityAddTraits(isOn ? [.isSelected] : [])
             }
         }
-        .padding(3)
-        .background(Theme.rule.opacity(0.55), in: RoundedRectangle(cornerRadius: 9))
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Show the result as")
+    }
+}
+
+/// A small picture of a view: lines of text with colored marks, or a radar shape on its rings.
+private struct ViewModeIllustration: View {
+    var mode: ResultViewMode
+    var isOn: Bool
+
+    var body: some View {
+        let ink = isOn ? Theme.accent : Theme.muted
+        ZStack {
+            RoundedRectangle(cornerRadius: 8).fill(Theme.paper)
+            RoundedRectangle(cornerRadius: 8).strokeBorder(Theme.rule, lineWidth: 1)
+            switch mode {
+            case .text:
+                VStack(alignment: .leading, spacing: 5) {
+                    ForEach(Array(zip([Theme.color(for: .bottleneck), Theme.color(for: .developing), Theme.color(for: .strong)],
+                                      [0.85, 0.65, 0.75])), id: \.1) { color, width in
+                        HStack(spacing: 5) {
+                            Circle().fill(color).frame(width: 5, height: 5)
+                            Capsule().fill(ink.opacity(0.55)).frame(height: 3)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .scaleEffect(x: width, anchor: .leading)
+                        }
+                    }
+                }
+                .padding(.horizontal, 8)
+            case .radar:
+                GeometryReader { geo in
+                    let center = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+                    let radius = min(geo.size.width, geo.size.height) / 2 - 3
+                    let values: [CGFloat] = [0.9, 0.55, 0.8, 0.45, 0.7, 0.6]
+                    ZStack {
+                        ForEach([1.0, 0.6], id: \.self) { ring in
+                            Self.polygon(center: center, radius: radius, values: Array(repeating: ring, count: 6))
+                                .stroke(Theme.rule, lineWidth: 1)
+                        }
+                        Self.polygon(center: center, radius: radius, values: values).fill(ink.opacity(0.22))
+                        Self.polygon(center: center, radius: radius, values: values).stroke(ink, lineWidth: 1.5)
+                    }
+                }
+            }
+        }
+        .accessibilityHidden(true)
+    }
+
+    private static func polygon(center: CGPoint, radius: CGFloat, values: [CGFloat]) -> Path {
+        Path { path in
+            for (i, value) in values.enumerated() {
+                let angle = -Double.pi / 2 + Double(i) * 2 * .pi / Double(values.count)
+                let point = CGPoint(x: center.x + cos(angle) * radius * value, y: center.y + sin(angle) * radius * value)
+                if i == 0 { path.move(to: point) } else { path.addLine(to: point) }
+            }
+            path.closeSubpath()
+        }
     }
 }
 
