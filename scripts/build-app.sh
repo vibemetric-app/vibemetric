@@ -71,6 +71,7 @@ ditto "$BIN_DIR/Sparkle.framework" "$APP/Contents/Frameworks/Sparkle.framework"
 install_name_tool -add_rpath "@executable_path/../Frameworks" "$APP/Contents/MacOS/Vibemetric"
 cp -R "$BIN_DIR/Vibemetric_VibemetricCore.bundle" "$APP/Contents/Resources/"
 cp -R "$BIN_DIR/Vibemetric_VibemetricAppKit.bundle" "$APP/Contents/Resources/"
+if [ "$HAS_PRO" = "1" ]; then cp -R "$BIN_DIR/Vibemetric_VibemetricPro.bundle" "$APP/Contents/Resources/"; fi
 # App icon. Regenerate from Resources/AppIcon.svg with: swift scripts/make-icon.swift
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 

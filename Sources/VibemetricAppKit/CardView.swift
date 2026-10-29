@@ -23,16 +23,16 @@ struct CardView: View {
     }
 }
 
-/// The main window's export buttons. They sit in the toolbar on every screen, so the bar keeps its height and the
-/// buttons their place; they're disabled when no result is showing.
-struct CardExportToolbar: ToolbarContent {
+/// The main window's export buttons. They sit in the header on every screen, so the buttons keep their place;
+/// they're disabled when no result is showing.
+struct CardExportButtons: View {
     /// The result on screen, or nil on the start screen, settings, or another tab.
     var record: CardRecord?
     @Environment(AppModel.self) private var model
     @State private var copied = false
 
-    var body: some ToolbarContent {
-        ToolbarItemGroup {
+    var body: some View {
+        HStack(spacing: 2) {
             Button {
                 guard let record else { return }
                 NSPasteboard.general.clearContents()
@@ -51,6 +51,7 @@ struct CardExportToolbar: ToolbarContent {
                 .help("Save the full report as a Markdown file")
                 .disabled(record == nil)
         }
+        .buttonStyle(HeaderIconButtonStyle())
     }
 
     // MARK: Export

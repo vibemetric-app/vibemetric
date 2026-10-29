@@ -264,8 +264,13 @@ public final class AppModel {
     var sidebarTab = AppModel.generalTab
     static let generalTab = "General"
 
+    /// "My scores", or the id of a header tab from `Extensions.headerTabs`.
+    var headerTab = AppModel.scoringTab
+    static let scoringTab = "My scores"
+
     /// Brings a sidebar tab to the front, together with the main window.
     public func showSidebarTab(_ id: String) {
+        headerTab = Self.scoringTab
         sidebarTab = id
         showsSettings = false
         showMainWindow(selectLatest: false)

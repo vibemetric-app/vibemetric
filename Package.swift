@@ -32,7 +32,8 @@ let package = Package(
         .testTarget(name: "VibemetricCoreTests", dependencies: ["VibemetricCore"]),
         .testTarget(name: "VibemetricAppTests", dependencies: ["VibemetricAppKit"]),
     ] + (hasPro ? [
-        .target(name: "VibemetricPro", dependencies: ["VibemetricAppKit"], path: "Pro/Sources/VibemetricPro"),
+        .target(name: "VibemetricPro", dependencies: ["VibemetricAppKit"], path: "Pro/Sources/VibemetricPro",
+                resources: [.process("Resources")]),
         .testTarget(name: "VibemetricProTests", dependencies: ["VibemetricPro"], path: "Pro/Tests/VibemetricProTests"),
     ] : [])
 )
