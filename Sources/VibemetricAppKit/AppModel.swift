@@ -211,9 +211,9 @@ public final class AppModel {
     var signedOut: [AssessmentEngine: CLIInstallation] = [:]
     var installationErrors: [AssessmentEngine: String] = [:]
 
-    enum EngineStatus: Equatable { case checking, ready, notInstalled, signedOut, failed(String) }
+    public enum EngineStatus: Equatable { case checking, ready, notInstalled, signedOut, failed(String) }
 
-    func status(of engine: AssessmentEngine) -> EngineStatus {
+    public func status(of engine: AssessmentEngine) -> EngineStatus {
         if installations[engine] != nil { return .ready }
         if isCheckingEngines { return .checking }
         if signedOut[engine] != nil { return .signedOut }
@@ -230,7 +230,7 @@ public final class AppModel {
         case .failed: "\(engine.name) couldn't start"
         }
     }
-    var isCheckingEngines = false
+    public var isCheckingEngines = false
     public var isScanning = false
     var runningEngine: AssessmentEngine?
     var showsRunProgress = false
@@ -396,7 +396,7 @@ public final class AppModel {
         UserDefaults.standard.set(stamped, forKey: AutoSettings.lastStatusKey)
     }
 
-    func refreshEngines() async {
+    public func refreshEngines() async {
         guard !isCheckingEngines else { return }
         isCheckingEngines = true
         defer { isCheckingEngines = false }
