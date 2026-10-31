@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.3 (2026-10-31)
+
+- An opened category ends with a See details button beside the deep dive button. Going to a deep dive and back keeps the categories you had open and your place in the results.
+- Official app: in an opened category, "1-click prompt to fix" starts a deep dive straight away, in place of the longer "Go deeper" box.
+- Official app: when Claude Code or Codex isn't signed in or installed, the deep dive button says why it's off, shows the Terminal command to sign in, and has a Check again link.
+- Official app: the note that another deep dive is running fades in and out with a spinner.
+
 ## 0.6.2 (2026-10-31)
 
 - Opening a category now shows a short version, top to bottom: the problem and the solution in a sentence each, your habits with how each went, and what's working. See full details opens the category's full tabs on their own page, with a way back to the results.
