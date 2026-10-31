@@ -368,27 +368,42 @@ extension View {
 
 /// A category's score as a ring filled to the score, with the number inside: the same round shape as the
 /// sidebar's score badges.
-struct ScoreRing: View {
+/// Used for every score shown as a circle: a category's score out of 10, or a total out of 100.
+public struct ScoreRing: View {
     var score: Int?
+    var outOf: Int
     var color: Color
     var size: CGFloat
+    /// The text inside, when it isn't just the score (for example "~72" for a total with unscored categories).
+    var label: String?
 
-    var body: some View {
+    public init(score: Int?, outOf: Int = 10, color: Color, size: CGFloat, label: String? = nil) {
+        self.score = score
+        self.outOf = outOf
+        self.color = color
+        self.size = size
+        self.label = label
+    }
+
+    public var body: some View {
         ZStack {
             Circle().stroke(Theme.rule, lineWidth: size * 0.08)
             if let score {
                 Circle()
-                    .trim(from: 0, to: CGFloat(score) / 10)
+                    .trim(from: 0, to: CGFloat(min(max(score, 0), outOf)) / CGFloat(outOf))
                     .stroke(color, style: StrokeStyle(lineWidth: size * 0.08, lineCap: .round))
                     .rotationEffect(.degrees(-90))
             }
-            Text(score.map(String.init) ?? "–")
+            Text(label ?? score.map(String.init) ?? "–")
                 .font(.system(size: size * 0.38, weight: .semibold, design: .rounded))
                 .monospacedDigit()
                 .foregroundStyle(score == nil ? Theme.muted : color)
+                .minimumScaleFactor(0.6)
+                .lineLimit(1)
+                .padding(.horizontal, size * 0.12)
         }
         .frame(width: size, height: size)
         .accessibilityElement()
-        .accessibilityLabel(score.map { "\($0) out of 10" } ?? "Not scored")
+        .accessibilityLabel(score.map { "\($0) out of \(outOf)" } ?? "Not scored")
     }
 }

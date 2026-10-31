@@ -24,7 +24,7 @@ public enum Theme {
 
     /// Color for a total score out of 100, like a grade: 90+ green, 80s light green,
     /// 70s yellow, 60s orange, below 60 red.
-    static func color(forTotal total: Int) -> Color {
+    public static func color(forTotal total: Int) -> Color {
         switch total {
         case 90...: Color(nsColor: .init(red: 0.13, green: 0.58, blue: 0.33, alpha: 1))
         case 80..<90: Color(nsColor: .init(red: 0.42, green: 0.66, blue: 0.20, alpha: 1))
@@ -119,26 +119,17 @@ struct RelativeDateText: View {
     }
 }
 
-/// A total score in a filled circle colored by its grade (see `Theme.color(forTotal:)`).
+/// A total score as a ring filled to the score out of 100, colored by its grade (see `Theme.color(forTotal:)`).
 struct ScoreBadge: View {
     var card: ScoreCard
     var size: CGFloat = 34
     @Environment(\.textScale) private var scale
 
     var body: some View {
-        let d = size * scale
-        ZStack {
-            Circle().fill(card.totalLabel == nil ? Theme.muted : Theme.color(forTotal: card.knownTotal))
-            Text(card.unknownCount == 0 ? "\(card.knownTotal)" : (card.totalLabel == nil ? "—" : "~\(card.knownTotal)"))
-                .font(.system(size: d * 0.42, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .foregroundStyle(.white)
-                .minimumScaleFactor(0.6)
-                .lineLimit(1)
-                .padding(.horizontal, 3)
-        }
-        .frame(width: d, height: d)
-        .accessibilityElement()
-        .accessibilityLabel("Score \(card.totalLabel ?? "not available")")
+        let scored = card.totalLabel != nil
+        ScoreRing(score: scored ? card.knownTotal : nil, outOf: 100,
+                  color: scored ? Theme.color(forTotal: card.knownTotal) : Theme.muted, size: size * scale,
+                  label: card.unknownCount == 0 ? nil : (scored ? "~\(card.knownTotal)" : "—"))
+            .accessibilityLabel("Score \(card.totalLabel ?? "not available")")
     }
 }
