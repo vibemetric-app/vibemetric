@@ -609,7 +609,9 @@ public final class Assessor: Sendable {
                 \(wrappedUp ? ", and add a line to `scope.limits` saying the run stopped reading at its time limit" : "").
                  Before writing, remember who reads `overview` and `highlights` first: someone who may not code. Each is one \
                 plain sentence of 8 to 16 everyday words, with no tool, product, model or project names, commands, file \
-                paths, or counts. The detail you just read belongs in the dimensions and `improvement`, not here.
+                paths, or counts. The detail you just read belongs in the dimensions and `improvement`, not here. The same \
+                reader goes on to `diagnosis`, `summary`, `improvement`, and `roadmap`: write them in short, plain sentences \
+                a junior teammate who does not code can follow, explaining any technical word in a few plain words.
                 """
         case let .dimension(dimension):
             return intro + """
@@ -618,7 +620,10 @@ public final class Assessor: Sendable {
                 dimensions and the overall fields. Before writing, remember who reads the quick lines first: someone who \
                 may not code. `goodLine` and `gapLine` are 5 to 9 everyday words each, `issueLine` 12 to 20 and `fixLine` \
                 10 to 18, plain sentences with no tool, product, model or project names, commands, file paths, or numbers. \
-                The detail you just read belongs in `saw`, `impact`, `strengths` and `evidence`.
+                The detail you just read belongs in `saw`, `impact`, `strengths` and `evidence`. The same reader opens \
+                those too, with `tryThis`, `solutionSteps`, `levelNow`, `nextLevel`, and the check notes: write them in \
+                short, plain sentences a junior teammate who does not code can follow, explaining any technical word in a \
+                few plain words, and naming a file or command only when the person needs it to act.
                 """
         }
     }
@@ -680,7 +685,11 @@ public final class Assessor: Sendable {
         Return the card as structured output that matches the provided JSON schema instead of Markdown. The app lays out the card \
         itself and computes the total, bands, and progress bars.
 
-        The card is read in a small window by a busy developer. Section 3 still decides what to judge and which evidence counts; \
+        Every field is read by a junior teammate who does not code, such as a new designer or project manager. If they \
+        would not understand a word, use a plainer one, or explain it in a few plain words the first time it appears, for \
+        example "a pre-push check (a test that runs before your code is shared)". Keep sentences short, about 20 words at \
+        most, with one idea each, and say what each fact means for the person's work. Name a file, command, or setting only \
+        when the person needs it to act, in backticks with a few words on what it is for. Section 3 still decides what to judge and which evidence counts; \
         this section decides how to write it down. Use Section 3's reasoning to decide the scores, then write the app fields \
         for their stated purpose instead of copying the full scoring argument into them. Keep anchor numbers, score \
         requirements, and commentary about your assessment process out of the problem and solution text. Explain the \
@@ -696,8 +705,8 @@ public final class Assessor: Sendable {
         actually did, and the work or risk left with the person. Explain what their approach was meant to achieve only when \
         the records support it. Lead with what those facts mean for the person, then use the case to explain that meaning. \
         Connect actions with results instead of listing events or reporting an unexplained status. Explain what was missing \
-        and why it mattered in that task, so the person does not have to infer why the situation is a problem. Preserve the \
-        technical detail needed to understand it. Do not invent intentions, causes, recurrence, or costs.
+        and why it mattered in that task, so the person does not have to infer why the situation is a problem. Keep only the \
+        technical detail the reader needs, explained in plain words. Do not invent intentions, causes, recurrence, or costs.
 
         Connect the solution to that supported problem and cause. Say who changes what and why it reduces the person's \
         burden. Account for procedures already in place and subsequent repairs. Keep the burden already experienced separate \
@@ -756,7 +765,8 @@ public final class Assessor: Sendable {
         notes you can reuse." and "Nobody checks those notes for old facts." \
         `gapLine` is an empty string at 10; `goodLine` is an empty string only when nothing in this dimension works yet.
           - `strengths`: up to 3 things the person already does well in this dimension, one short sentence each, as it happened \
-        in their sessions, with a number where one exists, for example "Commits and pushes go to a cheaper subagent, 12 times in two sessions." \
+        in their sessions, with a number where one exists, in words a non-coder follows, for example "You hand routine \
+        saving and sharing of code to a cheaper AI helper, 12 times in two sessions." \
         The app shows them under "Strengths". An empty array when nothing stands out. Group related habits \
         into one sentence rather than listing them separately.
           - `saw`: the supported problem or limitation in this dimension, written as `situation` below asks. The app shows \
@@ -786,16 +796,16 @@ public final class Assessor: Sendable {
           - `nextLevel`: what the next anchor up needs, in one plain sentence of at most 16 words, for example "Most changes get a \
         real check, and core tests run and keep passing." null at 10.
           - `checks`: every check the rubric lists under this dimension's table, once each, in its order, with its exact `id`, \
-        `status` (met, partly, not_met, not_seen) and `note`: one plain sentence with a real case, naming the project and who did \
-        what. not_seen means no task read called for it; it is not enough evidence, never a weakness. `seen` and `of`: how many of \
+        `status` (met, partly, not_met, not_seen) and `note`: one short plain sentence a non-coder follows, with a real case, naming \
+        the project and who did what. not_seen means no task read called for it; it is not enough evidence, never a weakness. `seen` and `of`: how many of \
         the relevant tasks you read showed it, only when at least 3 relevant tasks were read; otherwise both null and the note says \
         it rests on few examples. Choose the score from the same evidence: it must not claim an anchor whose checks are not met.
         - `improvement`: "One improvement to make first". `title` is the task, at most 10 words, starting with a verb. `dimension` is the \
         dimension it raises. `situation` explains one problem through 2 or 3 connected, plain sentences. Lead with the \
         consequence for the person, then explain what the person and AI did that produced it. Include the task and intended \
         outcome where needed to understand that connection. Keep one point per sentence because the app shows each sentence \
-        as its own bullet. Name the real thing (the command, the rule, \
-        the kind of task), not the rubric's terms: no "anchor", "completion criteria", "evidence", "dimension", or "the user". \
+        as its own bullet. Name the real thing in plain words (the rule, \
+        the kind of task), with a command in backticks only when the person needs it to act, not the rubric's terms: no "anchor", "completion criteria", "evidence", "dimension", or "the user". \
         For example: "The AI changed code 23 times last week. It never ran your tests once. You caught three breakages \
         yourself, a day later." or "You retyped the same rule, `use pnpm, never npm`, in 9 sessions. The AI still reached for npm \
         twice." `impact` names the supported burden or risk that remained, without repeating `situation`; the app adds it \
