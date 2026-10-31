@@ -140,19 +140,23 @@ struct CategoryBrief: View {
                     }
                 }
             }
-            Button(action: openDetails) {
-                HStack(spacing: 4) {
-                    Text("See full details")
-                    Image(systemName: "chevron.right")
-                }
-                .scaledFont(13, weight: .semibold).foregroundStyle(Theme.accent)
-                .frame(minHeight: 28).contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .pointingHandCursor()
-            .accessibilityIdentifier("category-see-full-details")
-            if let footer { footer }
+            // With a footer, the link sits first in the footer's row of actions.
+            if let footer { footer.environment(\.categoryFooterLead, AnyView(seeDetails)) } else { seeDetails }
         }
+    }
+
+    private var seeDetails: some View {
+        Button(action: openDetails) {
+            HStack(spacing: 4) {
+                Text("See details")
+                Image(systemName: "chevron.right")
+            }
+            .scaledFont(13, weight: .semibold).foregroundStyle(Theme.accent)
+            .frame(minHeight: 28).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+        .accessibilityIdentifier("category-see-full-details")
     }
 
     private func part(_ tab: CategoryDetails.Tab, @ViewBuilder content: () -> some View) -> some View {

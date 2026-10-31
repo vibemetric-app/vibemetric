@@ -90,3 +90,16 @@ public struct EvidencePackContext {
         self.sources = sources
     }
 }
+
+private struct CategoryFooterLeadKey: EnvironmentKey {
+    static let defaultValue: AnyView? = nil
+}
+
+extension EnvironmentValues {
+    /// Set on a category's short view: the category footer puts this link first in its button row and leaves out
+    /// its longer pitch, so the short view ends in one row of actions.
+    public var categoryFooterLead: AnyView? {
+        get { self[CategoryFooterLeadKey.self] }
+        set { self[CategoryFooterLeadKey.self] = newValue }
+    }
+}
