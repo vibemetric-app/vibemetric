@@ -11,6 +11,8 @@ struct ResultSummary: View {
     /// Opens every box (shared and exported cards).
     var expandAll = false
     var deepDiveFooter: ((VibemetricCore.Dimension) -> AnyView)?
+    /// Opens a category's full details on their own page; nil where the full details show in place (shared images).
+    var openDetails: ((VibemetricCore.Dimension) -> Void)?
     @State private var showsAllFixes = false
     @AppStorage(ResultViewMode.storageKey) private var mode: ResultViewMode = .text
 
@@ -139,9 +141,13 @@ struct ResultSummary: View {
             if showsRadar {
                 RadarChart(card: card, baseline: baseline?.card, baselineDate: baseline?.createdAt) { dimension in
                     AnyView(card.dimensions.first { $0.dimension == dimension }.map { d in
-                        CategoryDetails(result: d, note: card.deductionNote(for: d.dimension),
-                                        deductions: card.deductionAppliedTo == d.dimension ? card.deductions ?? [] : [],
-                                        footer: deepDiveFooter?(d.dimension))
+                        if let openDetails, d.isReadable {
+                            AnyView(CategoryBrief(result: d, footer: deepDiveFooter?(d.dimension)) { openDetails(d.dimension) })
+                        } else {
+                            AnyView(CategoryDetails(result: d, note: card.deductionNote(for: d.dimension),
+                                                    deductions: card.deductionAppliedTo == d.dimension ? card.deductions ?? [] : [],
+                                                    footer: deepDiveFooter?(d.dimension)))
+                        }
                     })
                 }
             } else {
@@ -159,7 +165,8 @@ struct ResultSummary: View {
                     FixBox(result: d, change: changes.first { $0.dimension == d.dimension },
                            note: card.deductionNote(for: d.dimension),
                            deductions: card.deductionAppliedTo == d.dimension ? card.deductions ?? [] : [],
-                           footer: deepDiveFooter?(d.dimension), expanded: expandAll)
+                           footer: deepDiveFooter?(d.dimension), expanded: expandAll,
+                           openDetails: openDetails.map { open in { open(d.dimension) } })
                 }
             }
             .background(Theme.card)
@@ -192,26 +199,21 @@ private struct FixBox: View {
     var note: String?
     var deductions: [ScoreCard.Deduction]
     var footer: AnyView?
+    var openDetails: (() -> Void)?
     @State private var expanded: Bool
 
     init(result: ScoreCard.DimensionResult, change: ScoreChange?, note: String?, deductions: [ScoreCard.Deduction],
-         footer: AnyView?, expanded: Bool) {
+         footer: AnyView?, expanded: Bool, openDetails: (() -> Void)? = nil) {
         self.result = result
         self.change = change
         self.note = note
         self.deductions = deductions
         self.footer = footer
+        self.openDetails = openDetails
         _expanded = State(initialValue: expanded)
     }
 
-    /// The scorer's one-line issue. Older cards have none: their problem text's first sentence when it's between six
-    /// words and about one line, which carries more context than the headline, else the headline.
-    private var issue: String {
-        if let line = result.issueLine, !line.trimmingCharacters(in: .whitespaces).isEmpty { return line }
-        if let first = result.saw.flatMap(Self.firstSentence), first.count <= 120,
-           first.split(separator: " ").count >= 6 { return first }
-        return result.headline
-    }
+    private var issue: String { result.shortIssue }
 
     /// The good line, then the gap line, when the card has them.
     private var quickLines: [(good: Bool, text: String)] {
@@ -219,17 +221,6 @@ private struct FixBox: View {
             guard let text = text?.trimmingCharacters(in: .whitespaces), !text.isEmpty else { return nil }
             return (good, text)
         }
-    }
-
-    static func firstSentence(_ text: String) -> String? {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        var sentence = trimmed
-        trimmed.enumerateSubstrings(in: trimmed.startIndex..., options: .bySentences) { substring, _, _, stop in
-            if let substring { sentence = substring.trimmingCharacters(in: .whitespaces) }
-            stop = true
-        }
-        return sentence
     }
 
     private var bandColor: Color { result.band.map(Theme.color(for:)) ?? Theme.muted }
@@ -241,8 +232,15 @@ private struct FixBox: View {
                 .pointingHandCursor()
                 .onHover { hovering = $0 }
                 .accessibilityHint(expanded ? "Hides the details" : "Shows the details")
+                .accessibilityIdentifier("category-row-\(result.dimension.rawValue)")
             if expanded {
-                CategoryDetails(result: result, note: note, deductions: deductions, footer: footer)
+                Group {
+                    if let openDetails, result.isReadable {
+                        CategoryBrief(result: result, footer: footer, openDetails: openDetails)
+                    } else {
+                        CategoryDetails(result: result, note: note, deductions: deductions, footer: footer)
+                    }
+                }
                     .padding(.leading, 18 + ringSize + 14)
                     .padding(.trailing, 18)
                     .padding(.bottom, 18)
@@ -268,7 +266,10 @@ private struct FixBox: View {
                     Text(result.dimension.title).scaledFont(15, weight: .semibold).foregroundStyle(Theme.ink)
                     if let change { DeltaBadge(change: change) }
                 }
-                if !quickLines.isEmpty {
+                if expanded && openDetails != nil && result.isReadable {
+                    // The opened row shows the short problem, solution, habits and strengths below instead.
+                    EmptyView()
+                } else if !quickLines.isEmpty {
                     ForEach(Array(quickLines.enumerated()), id: \.offset) { _, line in
                         HStack(alignment: .firstTextBaseline, spacing: 6) {
                             Image(systemName: line.good ? "checkmark.circle.fill" : "exclamationmark.circle.fill")
@@ -348,7 +349,7 @@ extension View {
 
 /// A category's score as a ring filled to the score, with the number inside: the same round shape as the
 /// sidebar's score badges.
-private struct ScoreRing: View {
+struct ScoreRing: View {
     var score: Int?
     var color: Color
     var size: CGFloat
