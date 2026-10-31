@@ -13,15 +13,30 @@ struct ReadableCardContent: View {
     var baseline: CardRecord?
     var expandAll: Bool
     var deepDiveFooter: ((VibemetricCore.Dimension) -> AnyView)?
+    /// The category whose full details are open on their own page, in place of the summary. nil where the page can't
+    /// open (shared images), so categories show their full details in place.
+    var openCategory: Binding<VibemetricCore.Dimension?>?
 
     private var card: ScoreCard { record.card }
     private var changes: [ScoreChange] { baseline.map { ScoreChanges.compare(card, to: $0.card) } ?? [] }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 30) {
-            ResultSummary(record: record, baseline: baseline, changes: changes, expandAll: expandAll,
-                          deepDiveFooter: deepDiveFooter).id("header")
-            about.id("scope")
+        Group {
+                if let dimension = openCategory?.wrappedValue, let result = card.dimensions.first(where: { $0.dimension == dimension }) {
+                    CategoryPage(result: result, change: changes.first { $0.dimension == dimension },
+                                 note: card.deductionNote(for: dimension),
+                                 deductions: card.deductionAppliedTo == dimension ? card.deductions ?? [] : [],
+                                 footer: deepDiveFooter?(dimension)) { openCategory?.wrappedValue = nil }
+                        .id("header")
+                } else {
+                    VStack(alignment: .leading, spacing: 30) {
+                        ResultSummary(record: record, baseline: baseline, changes: changes, expandAll: expandAll,
+                                      deepDiveFooter: deepDiveFooter,
+                                      openDetails: expandAll ? nil : openCategory.map { open in { open.wrappedValue = $0 } })
+                            .id("header")
+                        about.id("scope")
+                    }
+                }
         }
         .scrollTargetLayout()
         .textSelection(.enabled)
@@ -55,6 +70,142 @@ struct ReadableCardContent: View {
         } label: {
             Text("About this score").scaledFont(14, weight: .semibold).foregroundStyle(Theme.ink)
         }
+    }
+}
+
+extension ScoreCard.DimensionResult {
+    /// The scorer's one-line issue. Older cards have none: their problem text's first sentence when it's between six
+    /// words and about one line, which carries more context than the headline, else the headline.
+    var shortIssue: String {
+        if let line = issueLine, !line.trimmingCharacters(in: .whitespaces).isEmpty { return line }
+        if let first = saw.flatMap(Self.firstSentence), first.count <= 120,
+           first.split(separator: " ").count >= 6 { return first }
+        return headline
+    }
+
+    /// The scorer's one-line fix, else the fix's title.
+    var shortFix: String? {
+        if let line = fixLine, !line.trimmingCharacters(in: .whitespaces).isEmpty { return line }
+        return tryThis.flatMap(Self.firstSentence)
+    }
+
+    static func firstSentence(_ text: String) -> String? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+        var sentence = trimmed
+        trimmed.enumerateSubstrings(in: trimmed.startIndex..., options: .bySentences) { substring, _, _, stop in
+            if let substring { sentence = substring.trimmingCharacters(in: .whitespaces) }
+            stop = true
+        }
+        return sentence
+    }
+}
+
+/// An opened category, short, top to bottom: the problem and the solution in a line each, the habits checked with
+/// how each went, and what's working, then a link to the full details on their own page. The footer (the Pro deep
+/// dive) stays here so it's one click away.
+struct CategoryBrief: View {
+    var result: ScoreCard.DimensionResult
+    var footer: AnyView?
+    var openDetails: () -> Void
+
+    private func line(_ text: String?) -> String? {
+        guard let text = text?.trimmingCharacters(in: .whitespaces), !text.isEmpty else { return nil }
+        return text
+    }
+    private var strength: String? {
+        line(result.goodLine) ?? result.strengths?.first.flatMap(ScoreCard.DimensionResult.firstSentence)
+    }
+
+    /// The parts that have something to say, in tab order.
+    private var parts: [CategoryDetails.Tab] {
+        var parts: [CategoryDetails.Tab] = []
+        if result.band != .strong || result.issueLine != nil, line(result.shortIssue) != nil { parts.append(.problem) }
+        if line(result.shortFix) != nil { parts.append(.solution) }
+        if result.checks?.isEmpty == false { parts.append(.habits) }
+        if strength != nil { parts.append(.working) }
+        return parts
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(parts.enumerated()), id: \.element) { index, tab in
+                    if index > 0 { Rectangle().fill(Theme.ink.opacity(0.2)).frame(height: 1).padding(.vertical, 12) }
+                    switch tab {
+                    case .problem: part(tab) { sentence(result.shortIssue) }
+                    case .solution: part(tab) { sentence(result.shortFix ?? "") }
+                    case .habits: part(tab) { YourHabits(result: result, compact: true) }
+                    case .working: part(tab) { sentence(strength ?? "") }
+                    }
+                }
+            }
+            Button(action: openDetails) {
+                HStack(spacing: 4) {
+                    Text("See full details")
+                    Image(systemName: "chevron.right")
+                }
+                .scaledFont(13, weight: .semibold).foregroundStyle(Theme.accent)
+                .frame(minHeight: 28).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .pointingHandCursor()
+            .accessibilityIdentifier("category-see-full-details")
+            if let footer { footer }
+        }
+    }
+
+    private func part(_ tab: CategoryDetails.Tab, @ViewBuilder content: () -> some View) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Label(tab.title, systemImage: tab.symbol)
+                .scaledFont(12, weight: .semibold).foregroundStyle(tab.color)
+                .accessibilityAddTraits(.isHeader)
+            content()
+        }
+    }
+
+    private func sentence(_ text: String) -> some View {
+        Text(inline(text)).scaledFont(14).foregroundStyle(Theme.ink)
+            .lineSpacing(2)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// One category's full details on their own page: a way back, the category's name and score, then its tabs.
+struct CategoryPage: View {
+    @Environment(\.textScale) private var scale
+    var result: ScoreCard.DimensionResult
+    var change: ScoreChange?
+    var note: String?
+    var deductions: [ScoreCard.Deduction]
+    var footer: AnyView?
+    var back: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            Button(action: back) {
+                Label("Back to results", systemImage: "chevron.left")
+                    .scaledFont(13, weight: .semibold).foregroundStyle(Theme.accent)
+                    .frame(minHeight: 28).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .pointingHandCursor()
+            .keyboardShortcut(.cancelAction)
+            .accessibilityIdentifier("category-back-to-results")
+            HStack(spacing: 14) {
+                ScoreRing(score: result.score, color: result.band.map(Theme.color(for:)) ?? Theme.muted, size: 48 * scale)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(result.dimension.title).scaledFont(22, weight: .bold).foregroundStyle(Theme.ink)
+                        if let change { DeltaBadge(change: change) }
+                    }
+                    Text(result.dimension.question).scaledFont(13).foregroundStyle(Theme.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            CategoryDetails(result: result, note: note, deductions: deductions, footer: footer)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -294,6 +445,8 @@ private struct Bullets: View {
 /// such, apart from what is missing.
 private struct YourHabits: View {
     var result: ScoreCard.DimensionResult
+    /// Each habit and how it went on one line, without the note.
+    var compact = false
 
     private var checks: [(title: String, check: ScoreCheck)] {
         let titles = Dictionary(uniqueKeysWithValues: ScoreCheck.definitions(for: result.dimension).map { ($0.id, $0.title) })
@@ -301,9 +454,10 @@ private struct YourHabits: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: compact ? 6 : 14) {
             ForEach(checks, id: \.check.id) { item in row(item.title, item.check) }
         }
+        .padding(.top, compact ? 2 : 0)
     }
 
     private func row(_ title: String, _ check: ScoreCheck) -> some View {
@@ -312,11 +466,11 @@ private struct YourHabits: View {
                 .frame(width: 16)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(title).scaledFont(14, weight: .semibold).foregroundStyle(Theme.ink)
+                    Text(title).scaledFont(14, weight: compact ? .regular : .semibold).foregroundStyle(Theme.ink)
                     Text([check.status.label, check.count].compactMap { $0 }.joined(separator: " · "))
                         .scaledFont(12, weight: .medium).foregroundStyle(color(check.status))
                 }
-                if !check.note.isEmpty {
+                if !compact, !check.note.isEmpty {
                     Text(inline(check.note)).scaledFont(13).foregroundStyle(Theme.muted)
                         .lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true)

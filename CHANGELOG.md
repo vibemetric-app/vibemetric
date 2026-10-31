@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.6.2 (2026-10-31)
+
+- Opening a category now shows a short version, top to bottom: the problem and the solution in a sentence each, your habits with how each went, and what's working. See full details opens the category's full tabs on their own page, with a way back to the results.
 ## 0.6.1 (2026-10-29)
 
 - A result's categories open with two picture tiles, List and Chart, in place of the small Text / Radar switch, so the two views are easy to find and to switch between.

@@ -78,6 +78,18 @@ enum Snapshot {
                         .write(to: dir.appendingPathComponent("radar-panel-\(scheme == .light ? "light" : "dark").png"))
                 }
             }
+            // The weakest category opened in the list (short), then its full details page.
+            if let weakest = card.dimensions.filter({ $0.score != nil && $0.isReadable }).min(by: { ($0.score ?? 0) < ($1.score ?? 0) }) {
+                for scheme in [ColorScheme.light, .dark] {
+                    let name = scheme == .light ? "light" : "dark"
+                    let brief = CategoryBrief(result: weakest) {}
+                        .frame(width: 740).padding(32).background(Theme.paper).environment(\.colorScheme, scheme)
+                    try render(brief, scheme: scheme).write(to: dir.appendingPathComponent("category-brief-\(name).png"))
+                    let page = CategoryPage(result: weakest, deductions: []) {}
+                        .frame(width: 796).padding(32).background(Theme.paper).environment(\.colorScheme, scheme)
+                    try render(page, scheme: scheme).write(to: dir.appendingPathComponent("category-page-\(name).png"))
+                }
+            }
             if let share = ShareCard.png(card: card, date: Date()) { try share.write(to: dir.appendingPathComponent("share.png")) }
             // The menu bar panel for the same card, in a throwaway preferences domain.
             let suite = "vibemetric-snapshot-\(UUID())"

@@ -7,6 +7,8 @@ struct CardView: View {
     var record: CardRecord
     @Environment(AppModel.self) private var model
     @State private var visibleSection: String?
+    /// The category whose full details page is open.
+    @State private var openCategory: VibemetricCore.Dimension?
 
     private var baseline: CardRecord? { model.baseline(for: record) }
 
@@ -14,12 +16,18 @@ struct CardView: View {
         ScrollView {
             VStack(spacing: 0) {
                 CardContent(record: record, baseline: baseline,
-                            deepDiveFooter: Extensions.categoryFooter.map { footer in { footer($0, record) } })
-                ForEach(Extensions.cardSections.indices, id: \.self) { Extensions.cardSections[$0](record) }
+                            deepDiveFooter: Extensions.categoryFooter.map { footer in { footer($0, record) } },
+                            openCategory: $openCategory)
+                if openCategory == nil {
+                    ForEach(Extensions.cardSections.indices, id: \.self) { Extensions.cardSections[$0](record) }
+                }
             }
             .frame(maxWidth: .infinity)
         }
         .scrollPosition(id: $visibleSection, anchor: .top)
+        // A new scroll view for each page, so a category's details and the results each open at the top.
+        .id(openCategory?.rawValue ?? "results")
+        .onChange(of: record.id) { _, _ in openCategory = nil }
     }
 }
 
@@ -89,6 +97,8 @@ struct CardContent: View {
     var expandAll = false
     /// The Pro deep-dive controls under each category; nil when rendering an image.
     var deepDiveFooter: ((VibemetricCore.Dimension) -> AnyView)? = nil
+    /// The category whose full details page is open; nil when rendering an image.
+    var openCategory: Binding<VibemetricCore.Dimension?>? = nil
     private var card: ScoreCard { record.card }
 
     private var changes: [ScoreChange] {
@@ -99,7 +109,8 @@ struct CardContent: View {
 
     var body: some View {
         if card.isReadable {
-            ReadableCardContent(record: record, baseline: baseline, expandAll: expandAll, deepDiveFooter: deepDiveFooter)
+            ReadableCardContent(record: record, baseline: baseline, expandAll: expandAll, deepDiveFooter: deepDiveFooter,
+                                openCategory: openCategory)
         } else {
             classic
         }
