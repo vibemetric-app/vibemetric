@@ -183,6 +183,15 @@ public final class AppModel {
         var isThought: Bool
     }
 
+    /// How a result looked when it was last left: which categories were open, which category's page was showing,
+    /// and where it was scrolled. Kept per result while the app runs, so going to a deep dive and back keeps it.
+    struct CardViewState: Equatable {
+        var openCategories: Set<VibemetricCore.Dimension> = []
+        var page: VibemetricCore.Dimension?
+        var scrolledTo: String?
+    }
+    var cardViewStates: [String: CardViewState] = [:]
+
     var phase: Phase = .scanning
     public var scan: ScanResult?
     var summary: ScanSummary?
