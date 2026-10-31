@@ -13,6 +13,8 @@ struct ResultSummary: View {
     var deepDiveFooter: ((VibemetricCore.Dimension) -> AnyView)?
     /// Opens a category's full details on their own page; nil where the full details show in place (shared images).
     var openDetails: ((VibemetricCore.Dimension) -> Void)?
+    /// The categories open in the list, kept by the window; nil where each row keeps its own (shared images).
+    var openCategories: Binding<Set<VibemetricCore.Dimension>>?
     @State private var showsAllFixes = false
     @AppStorage(ResultViewMode.storageKey) private var mode: ResultViewMode = .text
 
@@ -161,14 +163,23 @@ struct ResultSummary: View {
             // One card, a row per category, split by inset hairlines.
             VStack(spacing: 0) {
                 ForEach(Array(shown.enumerated()), id: \.element.id) { i, d in
-                    if i > 0 { Rectangle().fill(Theme.rule).frame(height: 1).padding(.leading, 18 + 40 * scale + 14) }
-                    FixBox(result: d, change: changes.first { $0.dimension == d.dimension },
-                           note: card.deductionNote(for: d.dimension),
-                           deductions: card.deductionAppliedTo == d.dimension ? card.deductions ?? [] : [],
-                           footer: deepDiveFooter?(d.dimension), expanded: expandAll,
-                           openDetails: openDetails.map { open in { open(d.dimension) } })
+                    // One view per row, named by its category, so the window can scroll back to the row.
+                    VStack(spacing: 0) {
+                        if i > 0 { Rectangle().fill(Theme.rule).frame(height: 1).padding(.leading, 18 + 40 * scale + 14) }
+                        FixBox(result: d, change: changes.first { $0.dimension == d.dimension },
+                               note: card.deductionNote(for: d.dimension),
+                               deductions: card.deductionAppliedTo == d.dimension ? card.deductions ?? [] : [],
+                               footer: deepDiveFooter?(d.dimension), expanded: expandAll,
+                               isOpen: openCategories.map { open in
+                                   Binding(get: { open.wrappedValue.contains(d.dimension) },
+                                           set: { if $0 { open.wrappedValue.insert(d.dimension) } else { open.wrappedValue.remove(d.dimension) } })
+                               },
+                               openDetails: openDetails.map { open in { open(d.dimension) } })
+                    }
+                    .id(d.dimension.rawValue)
                 }
             }
+            .scrollTargetLayout()
             .background(Theme.card)
             .clipShape(RoundedRectangle(cornerRadius: 10))
             .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.rule, lineWidth: 1))
@@ -200,17 +211,21 @@ private struct FixBox: View {
     var deductions: [ScoreCard.Deduction]
     var footer: AnyView?
     var openDetails: (() -> Void)?
-    @State private var expanded: Bool
+    /// Whether the row is open, when the window keeps it; otherwise the row keeps it itself.
+    var isOpen: Binding<Bool>?
+    @State private var keptOpen: Bool
+    private var expanded: Bool { isOpen?.wrappedValue ?? keptOpen }
 
     init(result: ScoreCard.DimensionResult, change: ScoreChange?, note: String?, deductions: [ScoreCard.Deduction],
-         footer: AnyView?, expanded: Bool, openDetails: (() -> Void)? = nil) {
+         footer: AnyView?, expanded: Bool, isOpen: Binding<Bool>? = nil, openDetails: (() -> Void)? = nil) {
         self.result = result
         self.change = change
         self.note = note
         self.deductions = deductions
         self.footer = footer
         self.openDetails = openDetails
-        _expanded = State(initialValue: expanded)
+        self.isOpen = isOpen
+        _keptOpen = State(initialValue: expanded)
     }
 
     private var issue: String { result.shortIssue }
@@ -255,7 +270,11 @@ private struct FixBox: View {
     @State private var hovering = false
     private var ringSize: CGFloat { 40 * scale }
 
-    private func toggle() { withAnimation(.easeOut(duration: 0.15)) { expanded.toggle() } }
+    private func toggle() {
+        withAnimation(.easeOut(duration: 0.15)) {
+            if let isOpen { isOpen.wrappedValue.toggle() } else { keptOpen.toggle() }
+        }
+    }
 
     /// The score as a ring, then the category's name with the issue under it, and a chevron.
     private var summary: some View {

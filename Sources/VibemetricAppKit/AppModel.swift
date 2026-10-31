@@ -183,6 +183,15 @@ public final class AppModel {
         var isThought: Bool
     }
 
+    /// How a result looked when it was last left: which categories were open, which category's page was showing,
+    /// and where it was scrolled. Kept per result while the app runs, so going to a deep dive and back keeps it.
+    struct CardViewState: Equatable {
+        var openCategories: Set<VibemetricCore.Dimension> = []
+        var page: VibemetricCore.Dimension?
+        var scrolledTo: String?
+    }
+    var cardViewStates: [String: CardViewState] = [:]
+
     var phase: Phase = .scanning
     public var scan: ScanResult?
     var summary: ScanSummary?
@@ -211,9 +220,9 @@ public final class AppModel {
     var signedOut: [AssessmentEngine: CLIInstallation] = [:]
     var installationErrors: [AssessmentEngine: String] = [:]
 
-    enum EngineStatus: Equatable { case checking, ready, notInstalled, signedOut, failed(String) }
+    public enum EngineStatus: Equatable { case checking, ready, notInstalled, signedOut, failed(String) }
 
-    func status(of engine: AssessmentEngine) -> EngineStatus {
+    public func status(of engine: AssessmentEngine) -> EngineStatus {
         if installations[engine] != nil { return .ready }
         if isCheckingEngines { return .checking }
         if signedOut[engine] != nil { return .signedOut }
@@ -230,7 +239,7 @@ public final class AppModel {
         case .failed: "\(engine.name) couldn't start"
         }
     }
-    var isCheckingEngines = false
+    public var isCheckingEngines = false
     public var isScanning = false
     var runningEngine: AssessmentEngine?
     var showsRunProgress = false
@@ -396,7 +405,7 @@ public final class AppModel {
         UserDefaults.standard.set(stamped, forKey: AutoSettings.lastStatusKey)
     }
 
-    func refreshEngines() async {
+    public func refreshEngines() async {
         guard !isCheckingEngines else { return }
         isCheckingEngines = true
         defer { isCheckingEngines = false }

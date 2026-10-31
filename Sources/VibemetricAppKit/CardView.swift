@@ -6,28 +6,40 @@ import VibemetricCore
 struct CardView: View {
     var record: CardRecord
     @Environment(AppModel.self) private var model
-    @State private var visibleSection: String?
-    /// The category whose full details page is open.
-    @State private var openCategory: VibemetricCore.Dimension?
-
     private var baseline: CardRecord? { model.baseline(for: record) }
 
+    /// This result's open categories, page, and scroll position, kept in the model so they survive leaving the result.
+    private var state: Binding<AppModel.CardViewState> {
+        Binding(get: { model.cardViewStates[record.id] ?? .init() },
+                set: { model.cardViewStates[record.id] = $0 })
+    }
+
+    /// Opens a category's page at its top, or, leaving it, returns to that category's row.
+    private var page: Binding<VibemetricCore.Dimension?> {
+        Binding(get: { state.wrappedValue.page }, set: { next in
+            let previous = state.wrappedValue.page
+            state.wrappedValue.page = next
+            state.wrappedValue.scrolledTo = next == nil ? previous?.rawValue : nil
+        })
+    }
+
     var body: some View {
+        let page = state.wrappedValue.page
         ScrollView {
             VStack(spacing: 0) {
                 CardContent(record: record, baseline: baseline,
                             deepDiveFooter: Extensions.categoryFooter.map { footer in { footer($0, record) } },
-                            openCategory: $openCategory)
-                if openCategory == nil {
+                            openCategory: self.page, openCategories: state.openCategories)
+                if page == nil {
                     ForEach(Extensions.cardSections.indices, id: \.self) { Extensions.cardSections[$0](record) }
                 }
             }
             .frame(maxWidth: .infinity)
         }
-        .scrollPosition(id: $visibleSection, anchor: .top)
-        // A new scroll view for each page, so a category's details and the results each open at the top.
-        .id(openCategory?.rawValue ?? "results")
-        .onChange(of: record.id) { _, _ in openCategory = nil }
+        .scrollPosition(id: state.scrolledTo, anchor: .top)
+        // A new scroll view for each page, so it opens where `scrolledTo` says: a category's page at its top, the
+        // results where they were left.
+        .id("\(record.id)-\(page?.rawValue ?? "results")")
     }
 }
 
@@ -99,6 +111,8 @@ struct CardContent: View {
     var deepDiveFooter: ((VibemetricCore.Dimension) -> AnyView)? = nil
     /// The category whose full details page is open; nil when rendering an image.
     var openCategory: Binding<VibemetricCore.Dimension?>? = nil
+    /// The categories open in the list; nil when rendering an image, where each row keeps its own.
+    var openCategories: Binding<Set<VibemetricCore.Dimension>>? = nil
     private var card: ScoreCard { record.card }
 
     private var changes: [ScoreChange] {
@@ -110,7 +124,7 @@ struct CardContent: View {
     var body: some View {
         if card.isReadable {
             ReadableCardContent(record: record, baseline: baseline, expandAll: expandAll, deepDiveFooter: deepDiveFooter,
-                                openCategory: openCategory)
+                                openCategory: openCategory, openCategories: openCategories)
         } else {
             classic
         }

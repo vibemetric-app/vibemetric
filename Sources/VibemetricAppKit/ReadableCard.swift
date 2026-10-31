@@ -16,6 +16,7 @@ struct ReadableCardContent: View {
     /// The category whose full details are open on their own page, in place of the summary. nil where the page can't
     /// open (shared images), so categories show their full details in place.
     var openCategory: Binding<VibemetricCore.Dimension?>?
+    var openCategories: Binding<Set<VibemetricCore.Dimension>>?
 
     private var card: ScoreCard { record.card }
     private var changes: [ScoreChange] { baseline.map { ScoreChanges.compare(card, to: $0.card) } ?? [] }
@@ -32,7 +33,8 @@ struct ReadableCardContent: View {
                     VStack(alignment: .leading, spacing: 30) {
                         ResultSummary(record: record, baseline: baseline, changes: changes, expandAll: expandAll,
                                       deepDiveFooter: deepDiveFooter,
-                                      openDetails: expandAll ? nil : openCategory.map { open in { open.wrappedValue = $0 } })
+                                      openDetails: expandAll ? nil : openCategory.map { open in { open.wrappedValue = $0 } },
+                                      openCategories: expandAll ? nil : openCategories)
                             .id("header")
                         about.id("scope")
                     }
@@ -105,6 +107,7 @@ extension ScoreCard.DimensionResult {
 /// how each went, and what's working, then a link to the full details on their own page. The footer (the Pro deep
 /// dive) stays here so it's one click away.
 struct CategoryBrief: View {
+    @Environment(\.textScale) private var scale
     var result: ScoreCard.DimensionResult
     var footer: AnyView?
     var openDetails: () -> Void
@@ -140,19 +143,30 @@ struct CategoryBrief: View {
                     }
                 }
             }
-            Button(action: openDetails) {
-                HStack(spacing: 4) {
-                    Text("See full details")
-                    Image(systemName: "chevron.right")
-                }
-                .scaledFont(13, weight: .semibold).foregroundStyle(Theme.accent)
-                .frame(minHeight: 28).contentShape(Rectangle())
+            // With a footer, the link sits first in the footer's row of actions.
+            Group {
+                if let footer { footer.environment(\.categoryFooterLead, AnyView(seeDetails)) } else { seeDetails }
             }
-            .buttonStyle(.plain)
-            .pointingHandCursor()
-            .accessibilityIdentifier("category-see-full-details")
-            if let footer { footer }
+            .padding(.top, 8)
         }
+    }
+
+    private var seeDetails: some View {
+        Button(action: openDetails) {
+            HStack(spacing: 4) {
+                Text("See details")
+                Image(systemName: "chevron.right")
+            }
+            .scaledFont(13, weight: .semibold).foregroundStyle(Theme.accent)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 32 * scale)
+            // An outlined button: the accent border with no fill, beside the deep dive's filled one.
+            .overlay(Capsule().strokeBorder(Theme.accent, lineWidth: 1))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+        .accessibilityIdentifier("category-see-full-details")
     }
 
     private func part(_ tab: CategoryDetails.Tab, @ViewBuilder content: () -> some View) -> some View {
