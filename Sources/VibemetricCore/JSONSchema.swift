@@ -85,6 +85,7 @@ enum JSONSchema {
                 "note": str,
                 "seen": ["type": ["integer", "null"], "minimum": 0],
                 "of": ["type": ["integer", "null"], "minimum": 0],
+                "sessions": array(str, max: 3),
             ]), max: 4),
         ])
         return [

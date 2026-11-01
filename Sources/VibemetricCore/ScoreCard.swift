@@ -502,3 +502,13 @@ public struct ScoreCard: Codable, Sendable {
         return expected > 0 && Double(scope.sessionsExamined) < Double(expected) * 0.8
     }
 }
+
+extension ScoreCard {
+    /// The sessions each scored dimension's checks cite, by dimension and check, or nil when the card is from before
+    /// checks cited sessions and so can't be rechecked session by session.
+    public var checkSessions: [(dimension: Dimension, check: String, sessions: [String])]? {
+        let checks = dimensions.filter { $0.status == .scored }.flatMap { d in (d.checks ?? []).map { (d.dimension, $0) } }
+        guard !checks.isEmpty, checks.allSatisfy({ $0.1.sessions != nil }) else { return nil }
+        return checks.map { ($0.0, $0.1.id, $0.1.sessions ?? []) }
+    }
+}

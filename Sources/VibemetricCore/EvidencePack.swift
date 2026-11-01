@@ -14,22 +14,33 @@ public enum EvidencePack {
     public static let maxDigests = 150
     static let digestCharLimit = 12_000
 
-    /// The last saved assessment, so the judge can keep scores steady unless new evidence moves them.
+    /// The last saved assessment, whose checks the scorer rechecks so scores stay steady unless the evidence changes.
     public struct Previous: Sendable {
         public var card: ScoreCard
         public var date: Date
         public init(card: ScoreCard, date: Date) { self.card = card; self.date = date }
     }
 
+    /// With `recheck`, a follow-up whose previous card cites sessions on its checks gets digests only for the sessions
+    /// since that card and the sessions its checks cite, plus `recheck.md`; the scorer rechecks those instead of reading
+    /// the whole history again. Otherwise, and for previous cards without cited sessions, the pack covers everything.
     @discardableResult
     public static func write(_ scan: ScanResult, to dir: URL, now: Date = Date(), previous: Previous? = nil,
-                             ruleChanges: String? = nil, contextFiles: RuleSnapshot? = nil) throws -> URL {
+                             ruleChanges: String? = nil, contextFiles: RuleSnapshot? = nil, recheck: Bool = false) throws -> URL {
         let fm = FileManager.default
         try? fm.removeItem(at: dir)
         try fm.createDirectory(at: dir.appendingPathComponent("sessions"), withIntermediateDirectories: true)
 
         // Only the chosen sessions are parsed again in full; everything else comes from the scan's summaries.
-        let chosen = select(scan.sessions, since: previous?.date)
+        let cited = recheck ? previous?.card.checkSessions : nil
+        let chosen: [SessionSummary]
+        if let previous, let cited {
+            let ids = cited.flatMap(\.sessions)
+            chosen = select(scan.sessions.filter { s in (s.end ?? .distantPast) > previous.date || ids.contains { matches(s, $0) } },
+                            since: previous.date)
+        } else {
+            chosen = select(scan.sessions, since: previous?.date)
+        }
         var digestPaths: [String: String] = [:]
         var firstError: Error?
         let lock = NSLock()
@@ -53,16 +64,18 @@ public enum EvidencePack {
             .write(to: dir.appendingPathComponent("sessions.tsv"), atomically: true, encoding: .utf8)
         try Redactor.scrub(overview(scan, digests: digestPaths.count, now: now))
             .write(to: dir.appendingPathComponent("overview.md"), atomically: true, encoding: .utf8)
-        try Redactor.scrub(leads(scan.sessions, digestPaths: digestPaths))
+        try Redactor.scrub(leads(cited == nil ? scan.sessions : chosen, digestPaths: digestPaths))
             .write(to: dir.appendingPathComponent("leads.md"), atomically: true, encoding: .utf8)
         try Redactor.scrub(permissionSettings(scan))
             .write(to: dir.appendingPathComponent("settings.md"), atomically: true, encoding: .utf8)
         if let previous {
-            let encoder = JSONEncoder()
-            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            try encoder.encode(previous.card).write(to: dir.appendingPathComponent("previous-card.json"))
+            try reasonsOnly(previous.card).write(to: dir.appendingPathComponent("previous-card.json"))
             try Redactor.scrub(changes(since: previous.date, scan: scan, digestPaths: digestPaths))
                 .write(to: dir.appendingPathComponent("changes.md"), atomically: true, encoding: .utf8)
+            if let cited {
+                try Redactor.scrub(recheckList(cited, scan: scan, digestPaths: digestPaths))
+                    .write(to: dir.appendingPathComponent(recheckFile), atomically: true, encoding: .utf8)
+            }
         }
         if let contextFiles {
             try Redactor.scrub(RuleFiles.contextFilesReport(contextFiles))
@@ -74,8 +87,20 @@ public enum EvidencePack {
         return dir
     }
 
+    /// The previous card without its scores or anything written from them: each dimension's checks and the improvement.
+    /// The scorer rechecks these reasons and scores from them, so it has no number to keep.
+    static func reasonsOnly(_ card: ScoreCard) throws -> Data {
+        let full = try JSONSerialization.jsonObject(with: JSONEncoder().encode(card)) as? [String: Any] ?? [:]
+        let dimensions = (full["dimensions"] as? [[String: Any]] ?? []).map { d in
+            d.filter { ["dimension", "status", "checks"].contains($0.key) }
+        }
+        var reasons: [String: Any] = ["dimensions": dimensions]
+        reasons["improvement"] = full["improvement"]
+        return try JSONSerialization.data(withJSONObject: reasons, options: [.prettyPrinted, .sortedKeys])
+    }
+
     /// Sessions and settings that are new or changed since the previous assessment.
-    /// This is the only evidence that may justify moving a previous score.
+    /// With the previous checks' cited sessions, this is the evidence that may move a previous score.
     static func changes(since: Date, scan: ScanResult, digestPaths: [String: String]) -> String {
         var md = "# Changes since the previous assessment (\(stamp(since)))\n\n"
         let changed = scan.sessions.filter { ($0.end ?? .distantPast) > since }
@@ -92,6 +117,30 @@ public enum EvidencePack {
         md += "\n## Settings files changed since then\n\n"
         md += settings.isEmpty ? "None.\n" : settings.map { "- \($0.path) (modified \(stamp(modified($0))); see settings.md)" }.joined(separator: "\n") + "\n"
         return md
+    }
+
+    /// Present in a pack whose follow-up rechecks the previous card's checks rather than reading everything.
+    public static let recheckFile = "recheck.md"
+
+    /// Each previous check and the digests of the sessions it cites, or a note that a cited session is gone.
+    static func recheckList(_ cited: [(dimension: Dimension, check: String, sessions: [String])], scan: ScanResult,
+                            digestPaths: [String: String]) -> String {
+        var md = "# Sessions behind the previous checks\n\nOpen these to recheck each check in `previous-card.json`.\n"
+        for (dimension, group) in Dictionary(grouping: cited, by: \.dimension).sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
+            md += "\n## \(dimension.title)\n\n"
+            for item in group {
+                let found = item.sessions.map { id in
+                    scan.sessions.first { matches($0, id) }.flatMap { digestPaths[key($0)] } ?? "\(id) (not in the current records)"
+                }
+                md += "- `\(item.check)`: " + (found.isEmpty ? "no sessions cited" : found.joined(separator: ", ")) + "\n"
+            }
+        }
+        return md
+    }
+
+    /// A cited ID matches its session in full, or by a prefix or suffix of at least 8 characters.
+    static func matches(_ s: SessionSummary, _ id: String) -> Bool {
+        s.id == id || (id.count >= 8 && (s.id.hasPrefix(id) || s.id.hasSuffix(id)))
     }
 
     // MARK: Selection

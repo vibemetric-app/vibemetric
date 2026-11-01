@@ -493,7 +493,7 @@ public final class AppModel {
                                             "automatic": automatic, "sessions": lastScan.sessions.count,
                                             "first_result": history.isEmpty, "has_notes": options.instructions != nil]
         Analytics.capture("assessment_started", runProperties)
-        // Anchor to the latest result so scores only move when new evidence justifies it.
+        // Build on the latest result: the scorer rechecks its checks instead of reading the whole history again.
         let baseline = history.first { $0.isComparable(to: options) }
         let previous = baseline.map { EvidencePack.Previous(card: $0.card, date: $0.scannedAt) }
 
@@ -512,7 +512,7 @@ public final class AppModel {
                     let report = previous.map { prev in
                         RuleFiles.changesReport(current: snapshot, previous: baselineId.flatMap(Store.loadRules(for:)), since: prev.date)
                     }
-                    try EvidencePack.write(scan, to: packDir, previous: previous, ruleChanges: report, contextFiles: snapshot)
+                    try EvidencePack.write(scan, to: packDir, previous: previous, ruleChanges: report, contextFiles: snapshot, recheck: true)
                     try EvidencePack.writeSupplementary(scan, to: packDir, inputs: ["usage", "model_settings"])
                     return snapshot
                 }.value

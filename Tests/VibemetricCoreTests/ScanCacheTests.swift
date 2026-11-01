@@ -142,4 +142,55 @@ struct ScanCacheTests {
         // The only conversation text is a session's title; for Codex that is the first message, clipped.
         #expect(!text.contains("release steps"))
     }
+
+    /// A previous card whose checks cite `cited` (nil: a card from before checks cited sessions).
+    private func previousCard(citing cited: [String]?) throws -> EvidencePack.Previous {
+        let sessions = cited.map { "," + #""sessions":"# + "[" + $0.map { "\"\($0)\"" }.joined(separator: ",") + "]" } ?? ""
+        let json = ReadableCardTests.readableCard.replacingOccurrences(
+            of: #""changeReason":null}"#,
+            with: #""changeReason":null,"checks":[{"id":"real_checks","status":"met","note":"Checked in the app.","seen":null,"of":null"# + sessions + "}]}")
+        let card = try JSONDecoder().decode(ScoreCard.self, from: Data(json.utf8))
+        // Between the Codex session (Sep 2, 09:00) and s2 (Sep 3).
+        return EvidencePack.Previous(card: card, date: ISO8601DateFormatter().date(from: "2026-09-02T12:00:00Z")!)
+    }
+
+    private func digests(_ dir: URL) throws -> Set<String> {
+        Set(try FileManager.default.contentsOfDirectory(atPath: dir.appendingPathComponent("sessions").path))
+    }
+
+    @Test func aRecheckReadsOnlyNewAndCitedSessions() throws {
+        let history = try History()
+        let scan = Scanner.scan(sources: history.sources)
+        let dir = history.root.appendingPathComponent("pack")
+        try EvidencePack.write(scan, to: dir, previous: try previousCard(citing: ["s1"]), recheck: true)
+        // s1 is cited by a check and s2 is new since the previous card; the older Codex session is not read again.
+        #expect(try digests(dir) == ["cc-s1.md", "cc-s2.md"])
+        let recheck = try String(contentsOf: dir.appendingPathComponent(EvidencePack.recheckFile), encoding: .utf8)
+        #expect(recheck.contains("`real_checks`: sessions/cc-s1.md"))
+        // The index still lists every session.
+        #expect(try String(contentsOf: dir.appendingPathComponent("sessions.tsv"), encoding: .utf8).contains("0199codex"))
+        // The scorer gets the previous checks but not the previous scores.
+        let previous = try String(contentsOf: dir.appendingPathComponent("previous-card.json"), encoding: .utf8)
+        #expect(previous.contains("real_checks"))
+        #expect(!previous.contains("\"score\""))
+        #expect(!previous.contains("\"headline\""))
+    }
+
+    @Test func aCitedSessionThatIsGoneIsNamed() throws {
+        let history = try History()
+        let scan = Scanner.scan(sources: history.sources)
+        let dir = history.root.appendingPathComponent("pack")
+        try EvidencePack.write(scan, to: dir, previous: try previousCard(citing: ["deleted-session-1234"]), recheck: true)
+        let recheck = try String(contentsOf: dir.appendingPathComponent(EvidencePack.recheckFile), encoding: .utf8)
+        #expect(recheck.contains("deleted-session-1234 (not in the current records)"))
+    }
+
+    @Test func aCardWithoutCitedSessionsGetsTheFullPack() throws {
+        let history = try History()
+        let scan = Scanner.scan(sources: history.sources)
+        let dir = history.root.appendingPathComponent("pack")
+        try EvidencePack.write(scan, to: dir, previous: try previousCard(citing: nil), recheck: true)
+        #expect(try digests(dir).count == 3)
+        #expect(!FileManager.default.fileExists(atPath: dir.appendingPathComponent(EvidencePack.recheckFile).path))
+    }
 }

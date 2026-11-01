@@ -96,7 +96,8 @@ public final class Assessor: Sendable {
     public func run(packDir: URL, sources: [TranscriptSource], options: AssessmentOptions = AssessmentOptions(),
                     previousDate: Date? = nil, onProgress: @escaping @Sendable (Progress) -> Void) async throws -> AssessmentOutcome {
         let started = Date(), clockStarted = AwakeClock.now
-        let prompt = Self.prompt(sources: sources, now: started, previousDate: previousDate,
+        let rechecks = FileManager.default.fileExists(atPath: packDir.appendingPathComponent(EvidencePack.recheckFile).path)
+        let prompt = Self.prompt(sources: sources, now: started, previousDate: previousDate, rechecks: rechecks,
                                  digestCount: Self.digestCount(packDir), engine: options.engine, instructions: options.instructions)
         var options = options
         options.timeout = min(options.timeout, AssessmentOptions.scoreTimeLimit)
@@ -628,7 +629,7 @@ public final class Assessor: Sendable {
         }
     }
 
-    static func prompt(sources: [TranscriptSource], now: Date, previousDate: Date? = nil, digestCount: Int = 0, engine: AssessmentEngine = .claude,
+    static func prompt(sources: [TranscriptSource], now: Date, previousDate: Date? = nil, rechecks: Bool = false, digestCount: Int = 0, engine: AssessmentEngine = .claude,
                        instructions: String? = nil) -> String {
         let f = DateFormatter()
         f.dateFormat = "yyyy-MM-dd HH:mm"
@@ -679,7 +680,7 @@ public final class Assessor: Sendable {
         `sessions.tsv`, and `leads.md` already cover every session, so use them for counts and patterns across the whole history. \
         Then stop reading and write the card. The run has a hard time limit; if it is reached you will be asked to return the card \
         from what you have read. `sessionsExamined` must equal the digests and transcripts you actually read.
-        \(previousDate.map { Self.followUpRules(previousDate: f.string(from: $0)) } ?? "")\(instructions.map(Self.personNotes) ?? "")
+        \(previousDate.map { Self.followUpRules(previousDate: f.string(from: $0), rechecks: rechecks) } ?? "")\(instructions.map(Self.personNotes) ?? "")
         # Return format
 
         Return the card as structured output that matches the provided JSON schema instead of Markdown. The app lays out the card \
@@ -791,8 +792,8 @@ public final class Assessor: Sendable {
           - `evidence`: up to 3 references you verified: tool, full session id, date (YYYY-MM-DD), `project` (the project's short name; \
         when a session ran in a parent folder such as `Documents` or the home folder, name the project it worked on), \
         and `note`, one short line on what happened there, for example "12 edits, no test run, then reported done".
-          - `changeReason`: null when there is no previous card or the score is unchanged; otherwise one sentence naming the new \
-        evidence that moved it: what changed in the person's practice, with dates. A different subset of the same history is not a reason.
+          - `changeReason`: null when there is no previous card; otherwise as "The previous assessment" says, naming what changed \
+        in the person's practice, with dates. A different subset of the same history is not a reason.
           - `levelNow`: the anchor this score reached, in one plain sentence of at most 14 words, for example "Checking is common, \
         but core behavior in your main projects still has gaps." For 2, 4, 6 and 8 it is the anchor below.
           - `nextLevel`: what the next anchor up needs, in one plain sentence of at most 16 words, for example "Most changes get a \
@@ -801,7 +802,9 @@ public final class Assessor: Sendable {
         `status` (met, partly, not_met, not_seen) and `note`: one short plain sentence a non-coder follows, with a real case, naming \
         the project and who did what. not_seen means no task read called for it; it is not enough evidence, never a weakness. `seen` and `of`: how many of \
         the relevant tasks you read showed it, only when at least 3 relevant tasks were read; otherwise both null and the note says \
-        it rests on few examples. Choose the score from the same evidence: it must not claim an anchor whose checks are not met.
+        it rests on few examples. `sessions`: the full session IDs, from `sessions.tsv`, of up to 3 sessions you read that the note \
+        rests on, so a later score can open them again; an empty array when the status rests on an absence across many sessions \
+        or is not_seen. Choose the score from the same evidence: it must not claim an anchor whose checks are not met.
         - `improvement`: "One improvement to make first". `title` is the task, at most 10 words, starting with a verb. `dimension` is the \
         dimension it raises. `situation` explains one problem through 2 or 3 connected, plain sentences. Lead with the \
         consequence for the person, then explain what the person and AI did that produced it. Include the task and intended \
@@ -830,21 +833,31 @@ public final class Assessor: Sendable {
 
 extension Assessor {
     /// Uses the previous assessment and records to trace current practices, then scores them against the rubric.
-    static func followUpRules(previousDate: String) -> String {
+    static func followUpRules(previousDate: String, rechecks: Bool = false) -> String {
         """
 
         # The previous assessment
 
-        A previous assessment from \(previousDate) is in `previous-card.json`, and `changes.md` lists the sessions and settings \
-        that are new or changed since then. Use `previous-card.json` together with the supplied session records and summaries to \
-        understand how the person's ways of working have changed over time. Determine which practices remain in use at the \
-        assessment time, accounting for documented changes that replaced earlier practices.
+        The reasons behind a previous assessment from \(previousDate) are in `previous-card.json`: each dimension's checks \
+        (status, note, and the sessions they rest on) and the improvement given then. Its scores are left out on purpose. \
+        `changes.md` lists the sessions and settings that are new or changed since then. \(rechecks ? """
+        `\(EvidencePack.recheckFile)` lists, for each check in `previous-card.json`, the digests of the sessions it cites. This pack \
+        has digests only for those sessions and the new or changed ones: the rest of your history was read for the previous \
+        assessment and is not read again. Do not open raw transcripts of sessions without a digest. `overview.md`, \
+        `sessions.tsv`, `settings.md` and `context-files.md` still cover everything, so read them as usual.
+        """ : "")
+        Rescore by rechecking the previous assessment's reasons, not by keeping its numbers:
 
-        For each dimension, compare those current practices with the rubric's criteria and assign the score those criteria support, \
-        following the rubric's scoring rules.
+        1. Recheck each check in `previous-card.json`. Open the sessions it cites (its `sessions`) and confirm they still show \
+        what its note says. Keep its status when they do and no new or changed session bears on it; a different impression \
+        of the same session is not a reason to change it. Judge it again from the current records, and say why in its note, \
+        when a cited session is missing or does not support the note, when a new or changed session bears on it, or when \
+        it cites no sessions (cards from before checks cited sessions, and statuses that rest on an absence). Give every \
+        check its `sessions` again, keeping the cited ones that still hold.
+        2. Then choose each dimension's score from its current checks and evidence under the rubric's scoring rules.
 
-        When a score differs from the previous assessment, explain in `changeReason` which current practice and rubric criteria \
-        support the new score.
+        `changeReason`: when any check in a dimension changed status, one sentence naming the checks that changed and the \
+        sessions that changed them; null when none did. The app compares the scores itself.
 
         # Choosing the improvement after the previous one
 

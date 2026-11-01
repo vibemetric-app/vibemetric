@@ -198,7 +198,7 @@ struct CardContent: View {
                             Text(c.dimension.title).scaledFont(13, weight: .semibold).foregroundStyle(Theme.ink)
                             DeltaBadge(change: c)
                         }
-                        Text(c.isUnexplained ? "No new evidence cited, so this is most likely scoring variation rather than a real change." : c.reason!)
+                        Text(c.isUnexplained ? ScoreChange.noReasonText(c) : c.reason!)
                             .scaledFont(12)
                             .foregroundStyle(c.isUnexplained ? Theme.muted : Theme.ink)
                             .fixedSize(horizontal: false, vertical: true)
@@ -508,20 +508,31 @@ struct ReasonCard: View {
     }
 }
 
-/// "▲2" / "▼1" next to a score. Grey with a "?" when the judge gave no reason for the move.
+/// "▲2" / "▼1" next to a score. Grey when the judge gave no reason for the move, with a "?" unless the checks stayed
+/// the same (then the score was worked out again from the same reasons).
 struct DeltaBadge: View {
     var change: ScoreChange
 
     var body: some View {
         let delta = change.delta ?? 0
-        let text = change.delta == nil ? "new" : "\(delta > 0 ? "▲" : "▼")\(abs(delta))\(change.isUnexplained ? "?" : "")"
+        let doubt = change.isUnexplained && !change.checksUnchanged ? "?" : ""
+        let text = change.delta == nil ? "new" : "\(delta > 0 ? "▲" : "▼")\(abs(delta))\(doubt)"
         Text(text)
             .scaledFont(11, weight: .bold, design: .monospaced)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
             .foregroundStyle(change.isUnexplained ? Theme.muted : delta > 0 ? Theme.color(for: .strong) : Theme.color(for: .bottleneck))
             .background(Theme.paper, in: Capsule())
-            .help(change.isUnexplained ? "Changed without new evidence: most likely scoring variation" : (change.reason ?? ""))
+            .help(change.isUnexplained ? ScoreChange.noReasonText(change) : (change.reason ?? ""))
+    }
+}
+
+extension ScoreChange {
+    /// What to say about a move the judge gave no reason for.
+    static func noReasonText(_ change: ScoreChange) -> String {
+        change.checksUnchanged
+            ? "Same checks as last time. The score was worked out again from them, and the previous number didn't match."
+            : "No new evidence cited, so this is most likely scoring variation rather than a real change."
     }
 }
 

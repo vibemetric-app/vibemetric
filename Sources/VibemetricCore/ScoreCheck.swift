@@ -31,13 +31,17 @@ public struct ScoreCheck: Codable, Sendable, Equatable, Identifiable {
     /// How many of the relevant tasks read showed it, when at least `minimumCount` were read.
     public var seen: Int?
     public var of: Int?
+    /// The full IDs of the sessions the note rests on, so a later score can open them again and recheck the status.
+    /// Empty when the status rests on an absence; nil on cards from before checks cited sessions.
+    public var sessions: [String]?
 
-    public init(id: String, status: Status, note: String, seen: Int? = nil, of: Int? = nil) {
+    public init(id: String, status: Status, note: String, seen: Int? = nil, of: Int? = nil, sessions: [String]? = nil) {
         self.id = id
         self.status = status
         self.note = note
         self.seen = seen
         self.of = of
+        self.sessions = sessions
     }
 
     /// The fewest relevant tasks a count may rest on; with fewer, the check gives no count.
