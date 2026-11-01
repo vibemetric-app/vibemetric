@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.6.6 (2026-11-01)
 
 - Scores are steadier. A new score rechecks the reasons behind your last one (each category's checks) and works out the number from them; the scorer no longer sees last time's numbers. Each check names the sessions it rests on, so later scores read those and your new sessions instead of your whole history.
 - When a category's score moves while its checks stay the same, it says so instead of calling the move scoring variation.
