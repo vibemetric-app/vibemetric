@@ -136,8 +136,12 @@ public struct ScoreCard: Codable, Sendable {
         /// Readable cards (rubric 4 output): short plain-text fields the app lays out. nil on older cards,
         /// which show `points` or `reason` instead.
         /// What the records show, with a number where one exists. On cards with `strengths`, only the gap that
-        /// keeps the score below 10 (empty at 10); older cards may mix in what went well.
+        /// keeps the score below 10 (empty at 10); older cards may mix in what went well. On cards with `problems`,
+        /// those problems joined, for the places that show one block.
         public var saw: String?
+        /// The problems that keep the score below 10, one short sentence each, sorted apart from `strengths` by the
+        /// scorer, minus any that repeat a strength. nil on cards from before the list, which have `saw` only.
+        public var problems: [String]?
         /// What the person already does well in this dimension, one short sentence each. nil on cards from
         /// before strengths were split out of `saw`.
         public var strengths: [String]?
@@ -164,7 +168,7 @@ public struct ScoreCard: Codable, Sendable {
         public var checks: [ScoreCheck]?
 
         /// True when the card carries the short readable fields.
-        public var isReadable: Bool { saw?.isEmpty == false || strengths != nil }
+        public var isReadable: Bool { saw?.isEmpty == false || strengths != nil || problems != nil }
 
         public struct Point: Codable, Sendable {
             public var heading: String
@@ -204,7 +208,7 @@ public struct ScoreCard: Codable, Sendable {
         public var band: Band? { score.map(Band.init(score:)) }
 
         enum CodingKeys: String, CodingKey {
-            case dimension, score, status, headline, reason, points, conclusion, evidence, changeReason, saw, strengths, impact, tryThis, solutionSteps,
+            case dimension, score, status, headline, reason, points, conclusion, evidence, changeReason, saw, problems, strengths, impact, tryThis, solutionSteps,
                  issueLine, fixLine, goodLine, gapLine, levelNow, nextLevel, checks
         }
 
@@ -220,6 +224,9 @@ public struct ScoreCard: Codable, Sendable {
             changeReason = try c.decodeIfPresent(String.self, forKey: .changeReason)
             saw = try c.decodeIfPresent(String.self, forKey: .saw)
             strengths = try c.decodeIfPresent([String].self, forKey: .strengths)
+            let listed = try c.decodeIfPresent([String].self, forKey: .problems)
+            problems = listed.map { Self.withoutStrengths($0, strengths: (try? c.decodeIfPresent([String].self, forKey: .strengths)) ?? []) }
+            if saw == nil, let problems { saw = problems.joined(separator: " ") }
             impact = try c.decodeIfPresent(String.self, forKey: .impact)
             tryThis = try c.decodeIfPresent(String.self, forKey: .tryThis)
             solutionSteps = try c.decodeIfPresent([String].self, forKey: .solutionSteps)
@@ -234,6 +241,20 @@ public struct ScoreCard: Codable, Sendable {
                 ?? (points?.isEmpty == false || (saw == nil && strengths == nil)
                     ? Self.compose(points: points ?? [], conclusion: conclusion)
                     : Self.compose(strengths: strengths ?? [], saw: saw, impact: impact, tryThis: tryThis, steps: solutionSteps ?? []))
+        }
+
+        /// `problems` without any that restate a strength, as a guard for when the scorer files good news under both:
+        /// a problem goes when most of its words (ignoring short ones) appear in one strength.
+        static func withoutStrengths(_ problems: [String], strengths: [String]) -> [String] {
+            func words(_ text: String) -> Set<String> {
+                Set(text.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).filter { $0.count > 3 })
+            }
+            let strengthWords = strengths.map(words)
+            return problems.filter { problem in
+                let w = words(problem)
+                guard w.count >= 3 else { return true }
+                return !strengthWords.contains { Double(w.intersection($0).count) / Double(w.count) >= 0.7 }
+            }
         }
 
         /// The readable fields as one Markdown text, for the report and other single-block readers.

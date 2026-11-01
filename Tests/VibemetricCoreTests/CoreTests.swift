@@ -415,7 +415,7 @@ final class ReasonPointsTests: XCTestCase {
         let props = obj["properties"] as! [String: Any]
         let item = (props["dimensions"] as! [String: Any])["items"] as! [String: Any]
         let required = Set(item["required"] as! [String])
-        XCTAssertTrue(required.isSuperset(of: ["headline", "strengths", "saw", "impact", "tryThis", "evidence"]))
+        XCTAssertTrue(required.isSuperset(of: ["headline", "strengths", "problems", "impact", "tryThis", "evidence"]))
         XCTAssertFalse(required.contains("points"))
         XCTAssertFalse(required.contains("reason"))
         let evidence = ((item["properties"] as! [String: Any])["evidence"] as! [String: Any])["items"] as! [String: Any]
@@ -471,6 +471,30 @@ final class ReadableCardTests: XCTestCase {
         XCTAssertEqual(again.dimensions[0].strengths, d.strengths)
         // Cards scored before the split have no strengths and keep their mixed text as it was.
         XCTAssertNil(try JSONDecoder().decode(ScoreCard.self, from: Data(Self.readableCard.utf8)).dimensions[0].strengths)
+    }
+
+    func testProblemsAreAListApartFromStrengths() throws {
+        // The memory card that showed "recalled it correctly" under Problem: the same good news filed under both lists.
+        let json = Self.readableCard.replacingOccurrences(
+            of: #""saw":"Tests ran after 8 of 31 code changes.""#,
+            with: #""strengths":["The repo layout memory saved Oct 10 was recalled correctly in new sessions on Oct 16."],"problems":["New sessions on Oct 16 recalled the repo layout memory correctly.","No session shows you opening the memory index to fix or prune entries."]"#)
+        let card = try JSONDecoder().decode(ScoreCard.self, from: Data(json.utf8))
+        let d = card.dimensions[0]
+        XCTAssertTrue(card.isReadable)
+        XCTAssertEqual(d.problems, ["No session shows you opening the memory index to fix or prune entries."])
+        // Single-block readers (the report, the menu bar) get the problems as one text.
+        XCTAssertEqual(d.saw, "No session shows you opening the memory index to fix or prune entries.")
+        XCTAssertTrue(d.reason.contains("**What we saw:** No session shows you opening"))
+        let again = try JSONDecoder().decode(ScoreCard.self, from: JSONEncoder().encode(card))
+        XCTAssertEqual(again.dimensions[0].problems, d.problems)
+        XCTAssertEqual(again.dimensions[0].saw, d.saw)
+    }
+
+    func testAProblemThatSharesAFewWordsWithAStrengthStays() {
+        let kept = ScoreCard.DimensionResult.withoutStrengths(
+            ["Tests ran after only 8 of 31 code changes in the checkout project."],
+            strengths: ["You ask for tests in the checkout project's notes."])
+        XCTAssertEqual(kept.count, 1)
     }
 
     func testAPerfectCategoryWithNothingToFixIsStillReadable() throws {

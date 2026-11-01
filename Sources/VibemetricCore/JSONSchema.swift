@@ -66,7 +66,7 @@ enum JSONSchema {
             "score": ["type": ["integer", "null"], "minimum": 0, "maximum": 10],
             "status": ["type": "string", "enum": ["scored", "not_assessable", "not_reviewed"]],
             "headline": str,
-            "saw": str,
+            "problems": array(str, max: 3),
             "issueLine": str,
             "fixLine": str,
             "goodLine": str,

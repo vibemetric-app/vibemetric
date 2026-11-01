@@ -620,7 +620,7 @@ public final class Assessor: Sendable {
                 dimensions and the overall fields. Before writing, remember who reads the quick lines first: someone who \
                 may not code. `goodLine` and `gapLine` are 5 to 9 everyday words each, `issueLine` 12 to 20 and `fixLine` \
                 10 to 18, plain sentences with no tool, product, model or project names, commands, file paths, or numbers. \
-                The detail you just read belongs in `saw`, `impact`, `strengths` and `evidence`. The same reader opens \
+                The detail you just read belongs in `problems`, `impact`, `strengths` and `evidence`. The same reader opens \
                 those too, with `tryThis`, `solutionSteps`, `levelNow`, `nextLevel`, and the check notes: write them in \
                 short, plain sentences a junior teammate who does not code can follow, explaining any technical word in a \
                 few plain words, and naming a file or command only when the person needs it to act.
@@ -769,12 +769,14 @@ public final class Assessor: Sendable {
         saving and sharing of code to a cheaper AI helper, 12 times in two sessions." \
         The app shows them under "Strengths". An empty array when nothing stands out. Group related habits \
         into one sentence rather than listing them separately.
-          - `saw`: the supported problem or limitation in this dimension, written as `situation` below asks. The app shows \
-        it under "Problem:" and in the list of issues. Start with the problem, not a list of what already works. Include \
-        setup only where it explains how the problem arose; put strengths in `strengths`. If the limitation is missing \
-        records rather than an observed failure, name the specific practice or result the records do not establish without \
-        inventing a failure or burden. Do not retell the scoring argument or name a target score. An empty string at 10. \
-        Never start with a label such as "Positive:", "Gap:", or "Problem:".
+          - `problems`: up to 3 problems or limitations in this dimension, one short sentence each, written as `situation` \
+        below asks: what happens, where or how often, with a number where one exists. The app shows them under "Problem", \
+        and its strengths go in `strengths` only. Sort every point you write into exactly one of the two lists: a sentence \
+        that says something works, was done correctly, or was recalled or reused well is a strength, never a problem, even \
+        as setup for a problem. Write each problem so it stands on its own: say what is missing or goes wrong, not what went \
+        right first. If the limitation is missing records rather than an observed failure, name the specific practice or \
+        result the records do not establish without inventing a failure or burden. Do not retell the scoring argument or \
+        name a target score. An empty array at 10. Never start with a label such as "Positive:", "Gap:", or "Problem:".
           - `impact`: the supported burden or risk left with the person, in one sentence. This appears under Problem, \
         so do not put advice or the expected benefit of the solution here. No praise. An empty string at 10.
           - `tryThis`: one concrete action that reaches the next anchor, in one sentence starting with a verb; null at 10. \
@@ -784,7 +786,7 @@ public final class Assessor: Sendable {
         next task, why it fixes the problem above, and how they will be able to tell it worked. Each bullet is one full, plain \
         sentence with a clear actor, and adds something the title does not already say. No pasted prompts, \
         rubric terms, or "consider". An empty array at 10.
-        For a `not_assessable` dimension, `strengths` is empty, `saw` states the evidence limitation, `impact` says what would make it assessable, \
+        For a `not_assessable` dimension, `strengths` is empty, `problems` states the evidence limitation in one sentence, `impact` says what would make it assessable, \
         `tryThis` is null, and `solutionSteps` is empty.
           - `evidence`: up to 3 references you verified: tool, full session id, date (YYYY-MM-DD), `project` (the project's short name; \
         when a session ran in a parent folder such as `Documents` or the home folder, name the project it worked on), \
