@@ -264,7 +264,14 @@ struct CategoryDetails: View {
         [result.saw ?? "", result.impact ?? ""].map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
             .joined(separator: " ")
     }
-    private var problemPoints: [String] { olderStrong ? [] : sentences(problemText) }
+    /// The scorer's own problem list when the card has one, so nothing it filed as a strength shows here; older cards
+    /// split their problem text into sentences.
+    private var problemPoints: [String] {
+        if let problems = result.problems {
+            return problems.filter { !$0.trimmingCharacters(in: .whitespaces).isEmpty } + sentences(result.impact ?? "")
+        }
+        return olderStrong ? [] : sentences(problemText)
+    }
     private var workingPoints: [String] { result.strengths ?? (olderStrong ? sentences(problemText) : []) }
     private var solution: String { result.tryThis ?? "" }
     private var steps: [String] { result.solutionSteps ?? [] }
