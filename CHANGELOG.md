@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.6.5 (2026-10-31)
+
+- A category's Problem tab lists only problems. The scorer now sorts every point into problems or strengths, so good news such as "new sessions recalled it correctly" shows only under Strengths. Scores from before this keep their saved text.
+
 ## 0.6.4 (2026-10-31)
 
 - Every score circle is a progress ring filled to the score, like the summary's category rings, including the totals in the history list.
