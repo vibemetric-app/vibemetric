@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.6.4 (2026-10-31)
+
+- Every score circle is a progress ring filled to the score, like the summary's category rings, including the totals in the history list.
+- A ? button after each category's name explains what the category covers and which checks raise its score.
+- Official app: category and team score badges use the same ring.
+- Official app: "1-click prompt to fix" matches the See details button beside it in height and shape.
+
 ## 0.6.3 (2026-10-31)
 
 - An opened category ends with a See details button beside the deep dive button. Going to a deep dive and back keeps the categories you had open and your place in the results.
