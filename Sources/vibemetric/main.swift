@@ -49,7 +49,7 @@ case "assess":
     // The CLI keeps no snapshots, so rule changes fall back to files modified since the previous card.
     let rules = RuleFiles.snapshot(scan: scan)
     let ruleChanges = previous.map { RuleFiles.changesReport(current: rules, previous: nil, since: $0.date) }
-    try EvidencePack.write(scan, to: dir, previous: previous, ruleChanges: ruleChanges, contextFiles: rules)
+    try EvidencePack.write(scan, to: dir, previous: previous, ruleChanges: ruleChanges, contextFiles: rules, recheck: true)
     FileHandle.standardError.write(Data("Evidence pack: \(dir.path) (\(scan.sessions.count) sessions). Running \(engine.name)…\n".utf8))
     var options = AssessmentOptions(engine: engine, model: value("--model"))
     options.timeout = AssessmentOptions.scoreTimeLimit

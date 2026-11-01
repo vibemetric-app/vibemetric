@@ -105,6 +105,7 @@ struct RootView: View {
     /// The sidebar's current width. The window's minimum is this plus the detail column's minimum, so dragging
     /// the window's edge in stops before it would take space from the sidebar.
     @State private var sidebarWidth = RootView.sidebarIdealWidth
+    @AppStorage(ScoringNews.seenKey) private var seenScoringNews = ""
 
     /// Sidebar widths: it never gets narrower than the minimum, and people can drag it out to the maximum.
     static let sidebarMinWidth: CGFloat = 220
@@ -134,7 +135,15 @@ struct RootView: View {
         .onChange(of: model.headerTab) { _, _ in model.showsSettings = false }
         .frame(minWidth: max(sidebarWidth, Self.sidebarMinWidth) + Self.sidebarChromeAllowance + Self.detailMinWidth)
         // Lets the menu bar item (AppKit) reopen this window after it's been closed.
-        .onAppear { model.openMainWindow = { openWindow(id: "main") } }
+        .onAppear {
+            model.openMainWindow = { openWindow(id: "main") }
+            // Someone without saved scores has nothing that changed, so they never see the note.
+            if model.history.isEmpty { seenScoringNews = ScoringNews.id }
+        }
+        .sheet(isPresented: Binding(get: { seenScoringNews != ScoringNews.id && !model.history.isEmpty },
+                                    set: { if !$0 { seenScoringNews = ScoringNews.id } })) {
+            ScoringNewsSheet { seenScoringNews = ScoringNews.id }
+        }
     }
 
     /// "My scores": the sidebar with General and the sidebar tabs, and the detail beside it.

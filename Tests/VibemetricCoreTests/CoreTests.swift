@@ -127,6 +127,18 @@ final class StabilityTests: XCTestCase {
         XCTAssertTrue(md.contains("blocking a push to main"))
     }
 
+    func testAMoveWithTheSameChecksIsMarked() throws {
+        var before = try card([6, 7, 7, 9, 8, 6, 7, 3, 8, 4])
+        before.dimensions[0].checks = [ScoreCheck(id: "fit_model", status: .partly, note: "Some tasks."),
+                                       ScoreCheck(id: "done_check", status: .notMet, note: "None said when it was done.")]
+        var after = try card([5, 7, 7, 9, 8, 6, 7, 3, 7, 4])
+        after.dimensions[0].checks = Array(before.dimensions[0].checks!.reversed())
+        after.dimensions[8].checks = [ScoreCheck(id: "scan", status: .met, note: "The scan ran.")]
+        let changes = ScoreChanges.compare(after, to: before)
+        XCTAssertEqual(changes.map(\.checksUnchanged), [true, false])
+        XCTAssertEqual(changes.map(\.isUnexplained), [true, true])
+    }
+
     func testNoChangesReportsSo() throws {
         let c = try card([5, 5, 5, 5, 5, 5, 5, 5, 5, 5])
         XCTAssertTrue(ScoreChanges.compare(c, to: c).isEmpty)
@@ -418,6 +430,8 @@ final class ReasonPointsTests: XCTestCase {
         XCTAssertTrue(required.isSuperset(of: ["headline", "strengths", "problems", "impact", "tryThis", "evidence"]))
         XCTAssertFalse(required.contains("points"))
         XCTAssertFalse(required.contains("reason"))
+        let checks = ((item["properties"] as! [String: Any])["checks"] as! [String: Any])["items"] as! [String: Any]
+        XCTAssertTrue((checks["required"] as! [String]).contains("sessions"))
         let evidence = ((item["properties"] as! [String: Any])["evidence"] as! [String: Any])["items"] as! [String: Any]
         XCTAssertTrue((evidence["required"] as! [String]).contains("project"))
         let improvement = Set((props["improvement"] as! [String: Any])["required"] as! [String])

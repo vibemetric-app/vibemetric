@@ -49,6 +49,13 @@ struct ResultSummary: View {
                 if let baseline, let delta = ScoreChanges.totalDelta(card, to: baseline.card) {
                     ChangePill(delta: delta, since: baseline.createdAt)
                 }
+                Text("Rubric v\(record.rubricVersion ?? "1")")
+                    .scaledFont(12, weight: .medium)
+                    .foregroundStyle(Theme.muted)
+                    .padding(.horizontal, 8).padding(.vertical, 3)
+                    .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Theme.rule, lineWidth: 1))
+                    .help("The version of the scoring rubric this score used. Scores compare only within one version.")
+                    .accessibilityIdentifier("result-rubric-version")
             }
         }
     }

@@ -29,7 +29,8 @@ enum Snapshot {
         guard let out = env["VIBEMETRIC_SNAPSHOT"], let cardPath = env["VIBEMETRIC_CARD"] else { return }
         do {
             let card = try JSONDecoder().decode(ScoreCard.self, from: Data(contentsOf: URL(fileURLWithPath: cardPath)))
-            let record = CardRecord(id: "snapshot", createdAt: Date(), model: nil, sessionsScanned: 0, elapsed: 0, card: card)
+            var record = CardRecord(id: "snapshot", createdAt: Date(), model: nil, sessionsScanned: 0, elapsed: 0, card: card)
+            record.rubricVersion = AssessmentOptions.rubricVersion
             // Optional VIBEMETRIC_BASELINE=<card.json> renders the "what changed" section too.
             let baseline = try env["VIBEMETRIC_BASELINE"].map {
                 CardRecord(id: "baseline", createdAt: Date().addingTimeInterval(-3600), model: nil, sessionsScanned: 0, elapsed: 0,
@@ -89,6 +90,10 @@ enum Snapshot {
                         .frame(width: 796).padding(32).background(Theme.paper).environment(\.colorScheme, scheme)
                     try render(page, scheme: scheme).write(to: dir.appendingPathComponent("category-page-\(name).png"))
                 }
+            }
+            for scheme in [ColorScheme.light, .dark] {
+                let news = ScoringNewsSheet {}.environment(\.colorScheme, scheme)
+                try render(news, scheme: scheme).write(to: dir.appendingPathComponent("scoring-news-\(scheme == .light ? "light" : "dark").png"))
             }
             if let share = ShareCard.png(card: card, date: Date()) { try share.write(to: dir.appendingPathComponent("share.png")) }
             // The menu bar panel for the same card, in a throwaway preferences domain.

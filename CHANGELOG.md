@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Scores are steadier. A new score rechecks the reasons behind your last one (each category's checks) and works out the number from them; the scorer no longer sees last time's numbers. Each check names the sessions it rests on, so later scores read those and your new sessions instead of your whole history.
+- When a category's score moves while its checks stay the same, it says so instead of calling the move scoring variation.
+- After updating, a one-time note explains what changed in scoring.
+- The rubric version shows next to your score.
+
 ## 0.6.5 (2026-10-31)
 
 - A category's Problem tab lists only problems. The scorer now sorts every point into problems or strengths, so good news such as "new sessions recalled it correctly" shows only under Strengths. Scores from before this keep their saved text.
