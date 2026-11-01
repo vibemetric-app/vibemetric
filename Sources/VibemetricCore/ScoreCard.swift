@@ -63,6 +63,22 @@ public enum Dimension: String, Codable, CaseIterable, Sendable, Identifiable {
         }
     }
 
+    /// What the dimension covers, in plain words, shown from the help button beside its name.
+    public var meaning: String {
+        switch self {
+        case .planningSpecs: "How clearly work is set up before the AI starts. A strong handoff says who the result is for, what done looks like and how it will be checked, and settles open questions first, so the AI builds the right thing the first time."
+        case .contextEngineering: "What each project tells the AI up front, in files like CLAUDE.md or AGENTS.md. Good project notes cover what the project is, how it's laid out, how to run and test it, the rules to follow and the known gotchas, and they stay short and current."
+        case .memory: "What the AI carries from one conversation to the next. It covers saving the preferences, corrections and facts later work needs, and clearing out memories that are wrong or out of date so they don't lead the AI astray."
+        case .toolIntegration: "Whether the AI does real work through connected tools, such as CLIs, MCP servers and connectors, instead of you doing it by hand. Recurring work saved as skills or tools, kept up to date and shared with others, scores highest."
+        case .taskMapping: "How big work is broken down before and between runs. Strong work is split into small pieces with their own checks, run in the right order with clear inputs and outputs, and each piece goes to the right agent or session."
+        case .feedbackLoops: "What happens when results come back. A check's result decides the next step: fix and recheck, stop when done, or escalate when stuck. Strong loops have clear stopping rules and get better from experience."
+        case .testingEvals: "Whether checking the AI's work is a habit. Changes are tried in the real flow, core behavior has tests that run, checks run without being asked, and AI features in your products are evaluated on real inputs. A simple script needs lighter checks than a full app."
+        case .humanSteering: "How you guide the AI while it works: spotting mistakes, wrong assumptions and extra scope, asking for evidence before accepting a fix, saying exactly what to change, and checking the result."
+        case .security: "Two things: how much access the agent gets, and whether what it builds is safe. Agents get only the access each task needs, set by permissions or hooks, and AI-built code is checked for exposed secrets, injection and missing access control."
+        case .efficiencyCost: "Whether the model and reasoning effort fit each task. Lighter models or lower effort go to simple work and stronger ones to hard judgment, and the choices change when results and usage show a model was too much or too little."
+        }
+    }
+
     public var title: String {
         switch self {
         case .planningSpecs: "Planning & Specs"

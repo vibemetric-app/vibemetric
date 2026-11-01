@@ -403,6 +403,7 @@ struct ReasonCard: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(result.dimension.title).scaledFont(15, weight: .semibold).foregroundStyle(Theme.ink)
+                    CategoryHelpButton(dimension: result.dimension)
                     Spacer()
                     if let change { DeltaBadge(change: change) }
                     ScorePips(score: result.score, size: 8)
