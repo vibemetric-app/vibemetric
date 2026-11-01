@@ -248,6 +248,14 @@ private struct FixBox: View {
                 .onHover { hovering = $0 }
                 .accessibilityHint(expanded ? "Hides the details" : "Shows the details")
                 .accessibilityIdentifier("category-row-\(result.dimension.rawValue)")
+                .overlayPreferenceValue(HelpSlot.self) { slot in
+                    GeometryReader { geo in
+                        if let slot {
+                            let rect = geo[slot]
+                            CategoryHelpButton(dimension: result.dimension).position(x: rect.midX, y: rect.midY)
+                        }
+                    }
+                }
             if expanded {
                 Group {
                     if let openDetails, result.isReadable {
@@ -283,6 +291,10 @@ private struct FixBox: View {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 8) {
                     Text(result.dimension.title).scaledFont(15, weight: .semibold).foregroundStyle(Theme.ink)
+                    // Holds the place of the help button, which sits over the row instead of inside its button so a
+                    // click on it doesn't also open the row.
+                    CategoryHelpButton(dimension: result.dimension).hidden().accessibilityHidden(true)
+                        .anchorPreference(key: HelpSlot.self, value: .bounds) { $0 }
                     if let change { DeltaBadge(change: change) }
                 }
                 if expanded && openDetails != nil && result.isReadable {
@@ -406,4 +418,10 @@ public struct ScoreRing: View {
         .accessibilityElement()
         .accessibilityLabel(score.map { "\($0) out of \(outOf)" } ?? "Not scored")
     }
+}
+
+/// Where a category row's help button goes, beside the category's name.
+private struct HelpSlot: PreferenceKey {
+    static var defaultValue: Anchor<CGRect>? { nil }
+    static func reduce(value: inout Anchor<CGRect>?, nextValue: () -> Anchor<CGRect>?) { value = value ?? nextValue() }
 }

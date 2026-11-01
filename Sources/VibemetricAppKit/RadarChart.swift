@@ -357,6 +357,7 @@ private struct RadarFocus: View {
             HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Image(systemName: result.dimension.symbol).scaledFont(14, weight: .semibold).foregroundStyle(color)
                 Text(result.dimension.title).scaledFont(18, weight: .bold).foregroundStyle(Theme.ink)
+                CategoryHelpButton(dimension: result.dimension, size: 15)
                 Text(result.score.map { "\($0)/10" } ?? "Not scored").scaledFont(14, weight: .semibold)
                     .monospacedDigit().foregroundStyle(color)
                 if let score = result.score, let previous, previous != score {

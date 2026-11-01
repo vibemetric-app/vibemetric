@@ -211,6 +211,7 @@ struct CategoryPage: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 8) {
                         Text(result.dimension.title).scaledFont(22, weight: .bold).foregroundStyle(Theme.ink)
+                        CategoryHelpButton(dimension: result.dimension, size: 17)
                         if let change { DeltaBadge(change: change) }
                     }
                     Text(result.dimension.question).scaledFont(13).foregroundStyle(Theme.muted)
@@ -577,4 +578,59 @@ func inline(_ s: String) -> AttributedString {
         result += piece
     }
     return result
+}
+
+/// A question mark in a circle, placed after a category's name. Clicking it shows what the category covers and the
+/// checks that raise its score.
+public struct CategoryHelpButton: View {
+    var dimension: VibemetricCore.Dimension
+    var size: CGFloat
+    @State private var showing = false
+
+    public init(dimension: VibemetricCore.Dimension, size: CGFloat = 13) {
+        self.dimension = dimension
+        self.size = size
+    }
+
+    public var body: some View {
+        Button { showing.toggle() } label: {
+            Image(systemName: "questionmark.circle").scaledFont(size).foregroundStyle(Theme.muted)
+                .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .pointingHandCursor()
+        .help("What \(dimension.title) means")
+        .accessibilityLabel("What \(dimension.title) means")
+        .accessibilityIdentifier("category-help-\(dimension.rawValue)")
+        .popover(isPresented: $showing, arrowEdge: .bottom) {
+            VStack(alignment: .leading, spacing: 10) {
+                Label {
+                    Text(dimension.title).scaledFont(15, weight: .bold).foregroundStyle(Theme.ink)
+                } icon: {
+                    Image(systemName: dimension.symbol).scaledFont(14, weight: .semibold).foregroundStyle(Theme.accent)
+                }
+                Text(dimension.question).scaledFont(13, weight: .semibold).foregroundStyle(Theme.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(dimension.meaning).scaledFont(13).foregroundStyle(Theme.muted).lineSpacing(2)
+                    .fixedSize(horizontal: false, vertical: true)
+                let checks = ScoreCheck.definitions(for: dimension)
+                if !checks.isEmpty {
+                    Divider()
+                    Text("What raises the score").scaledFont(12, weight: .semibold).foregroundStyle(Theme.muted)
+                    ForEach(checks, id: \.id) { check in
+                        Label {
+                            Text(check.title).scaledFont(13).foregroundStyle(Theme.ink)
+                                .fixedSize(horizontal: false, vertical: true)
+                        } icon: {
+                            Image(systemName: "checkmark").scaledFont(11, weight: .semibold).foregroundStyle(Theme.color(for: .strong))
+                        }
+                    }
+                }
+            }
+            .padding(16)
+            .frame(width: 480, alignment: .leading)
+            // A colored edge so the popover stands out from the dark window behind it.
+            .overlay(RoundedRectangle(cornerRadius: 10).strokeBorder(Theme.accent.opacity(0.7), lineWidth: 1.5))
+        }
+    }
 }
